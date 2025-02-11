@@ -19,7 +19,8 @@ import java.util.*;
 
 @Getter
 public class RocketManager extends CoreManager {
-
+    //TODO:-
+    // - Handle disconnects, crashes, deaths
     private final MortisRockets plugin = MortisRockets.getInstance();
     private final RocketSettings settings;
     private final Map<String, Rocket> rocketById;
@@ -33,6 +34,10 @@ public class RocketManager extends CoreManager {
     }
 
     public boolean canLand(Rocket rocket, Player player, Location location) {
+        //TODO:-
+        // - Prevent landing in liquids
+        // - World whitelist/blacklist
+        // - Specific rules of friend/enemy towns
         if (!rocket.isOutsideTownRadius(location, rocket.getLandingRadius() * 16)) {
             player.sendMessage(getMessage("LAND_NEAR_TOWN"));
             return false;
@@ -113,7 +118,8 @@ public class RocketManager extends CoreManager {
         launch(rocket, player, location);
         return true;
     }
-
+    //TODO:-
+    // - Different models for launch and landing
     private void launch(Rocket rocket, Player player, Location location) {
         traveling.add(player.getUniqueId());
         player.sendMessage(rocket.getLaunchingMessage());
@@ -135,7 +141,10 @@ public class RocketManager extends CoreManager {
             }
         }.runTaskTimer(plugin, 0L, 20L);
     }
-
+    //TODO :-
+    // - Grace period after landing
+    // - ability to use wasd to maneuver rocket on landing(possible use a different entity than armor stand?
+    // - configurable landing particle offset(Y Axis)
     private void land(Rocket rocket, Player player, Location location, ArmorStand stand) {
         Location loc = new Location(location.getWorld(), location.getX(), location.getY() + settings.getLandingDistance(), location.getZ());
         stand.eject();
