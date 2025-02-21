@@ -17,15 +17,50 @@ messages:
   confirmation-deny: "&c[DENY]"
 
 settings:
+  apply-texturepack: false
   url: "https://www.dropbox.com/sh/4dflqzxa3ukcxgg/AAAVWn-u1ufOoY0l8bD3CqqQa?dl=1"
   item:
-    material: RABBIT_HIDE
-    custom-model-data: 11
+    #item the player gets with the rocket give command, used to deploy rocket
+    inventory:
+      material: RABBIT_HIDE
+      custom-model-data: 11
+      name: "&cRocket"
+      description:
+        - "right click the ground holding this to deploy the rocket"
+        - "once deployed, sit inside, run a destination command, and insert fuel while inside rocket"
+    liftoff:
+      material: RABBIT_HIDE
+      custom-model-data: 11
+    landing:
+      material: RABBIT_HIDE
+      custom-model-data: 12
+      #negative values spawn particles below the model, positive particles spawn above the model, negative particles shoot downwards, positive they shoot upwards
+      landing-particle-offset: -3.0
+      #if possible a method to select particles to use, sizes, how many, etc?
   launch:
     time: 5 # in seconds
     speed: 2
   land:
     distance: 50
+  towny-integration:
+    use-towny: true
+    launch:
+      own-town: true
+      own-nation: true
+      ally-territory: true
+      enemy-territory: false
+      #distance in chunks from a non allowed launching zone (enemy territory for example)
+      #set to 0 to prevent launching directly on top of enemy towns but still being able to launch right next to their chunks
+      distance-from-unathorized-zones: 8
+    land:
+      own-town: true
+      own-nation: true
+      ally-territory: true
+      enemy-territory: false
+      #distance in chunks from a non allowed landing zone (enemy territory for example)
+      #set to 0 to prevent landing directly on top of enemy towns but still being able to land right next to their chunks
+      #this only affects the initial launch coordinates entered, if rockets are allowed to move during landing and they move into not allowed chunks they can still land there
+      distance-from-unathorized-zones: 8
 
 rockets:
   MARS:

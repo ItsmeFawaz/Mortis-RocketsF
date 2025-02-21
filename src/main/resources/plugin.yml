@@ -10,3 +10,5 @@ depend:
 commands:
   rocket:
     aliases: [rockets, mortisrocket, mortisrockets]
+  giverocket:
+    description: Give a player a rocket

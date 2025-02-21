@@ -72,24 +72,6 @@ public class Rocket {
         return null;
     }
 
-    public boolean isOutsideTownRadius(Location location, int radius) {
-        if (!plugin.isTowny() || radius <= 0) {
-            return true;
-        }
-        TownyAPI towny = TownyAPI.getInstance();
-        double locationX = location.getX();
-        double locationY = location.getY();
-        double locationZ = location.getZ();
-        for (double x = -radius; x <= radius; x++) {
-            for (double z = -radius; z <= radius; z++) {
-                Location loc = new Location(location.getWorld(), locationX + x, locationY, locationZ + z);
-                if (!towny.isWilderness(loc)) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
 
     public boolean hasRequirements(Location location) {
         Material type = location.getWorld().getHighestBlockAt(location).getType();

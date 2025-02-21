@@ -10,6 +10,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.io.File;
+import java.util.stream.Collectors;
 
 public class MainConfig extends Config {
 
@@ -39,21 +40,33 @@ public class MainConfig extends Config {
             return null;
         }
         String url = section.getString("url");
+        ItemStack launchItem = getItem(section.getConfigurationSection("item.liftoff"));
+        ItemStack landingItem = getItem(section.getConfigurationSection("item.landing"));
+        ItemStack inventoryItem = getItem(section.getConfigurationSection("item.inventory"));
+        int launchingTime = section.getInt("launch.time");
+        int launchingSpeed = section.getInt("launch.speed");
+        int landingDistance = section.getInt("land.distance");
+        double landingParticleOffset = section.getDouble("item.landing.landing-particle-offset");
+        return new RocketSettings(url, launchItem, landingItem, inventoryItem , launchingTime, launchingSpeed, landingDistance, landingParticleOffset, section.getConfigurationSection("towny-integration"));
+    }
+    private ItemStack getItem(ConfigurationSection itemSection) {
         Material material;
         try {
-            material = Material.valueOf(section.getString("item.material"));
+            material = Material.valueOf(itemSection.getString("material"));
         }catch (IllegalArgumentException | NullPointerException exp) {
             return null;
         }
         ItemStack item = new ItemStack(material, 1);
         ItemMeta meta = item.getItemMeta();
-        int customModelData = section.getInt("item.custom-model-data");
-        meta.setCustomModelData(customModelData);
+        if(itemSection.contains("name")) {
+            meta.setDisplayName(MessageUtils.color(itemSection.getString("name")));
+        }
+        if(itemSection.contains("description")) {
+            meta.setLore(itemSection.getStringList("description").stream().map(MessageUtils::color).collect(Collectors.toList()));
+        }
+        meta.setCustomModelData(itemSection.getInt("custom-model-data"));
         item.setItemMeta(meta);
-        int launchingTime = section.getInt("launch.time");
-        int launchingSpeed = section.getInt("launch.speed");
-        int landingDistance = section.getInt("land.distance");
-        return new RocketSettings(url, item, launchingTime, launchingSpeed, landingDistance);
+        return item;
     }
 
     private void loadRockets(ConfigurationSection rockets) {

@@ -2,6 +2,10 @@ package com.mortisdevelopment.mortisrockets.rockets;
 
 import com.mortisdevelopment.mortisrockets.MortisRockets;
 import com.mortisdevelopment.mortisrockets.managers.CoreManager;
+import com.palmergames.bukkit.towny.TownyAPI;
+import com.palmergames.bukkit.towny.object.Nation;
+import com.palmergames.bukkit.towny.object.Resident;
+import com.palmergames.bukkit.towny.object.Town;
 import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextReplacementConfig;
@@ -25,6 +29,7 @@ public class RocketManager extends CoreManager {
     private final RocketSettings settings;
     private final Map<String, Rocket> rocketById;
     private final Set<UUID> traveling;
+    private final TownyAPI townyAPI = TownyAPI.getInstance();
 
     public RocketManager(RocketSettings settings) {
         this.settings = settings;
@@ -38,11 +43,15 @@ public class RocketManager extends CoreManager {
         // - Prevent landing in liquids
         // - World whitelist/blacklist
         // - Specific rules of friend/enemy towns
-        if (!rocket.isOutsideTownRadius(location, rocket.getLandingRadius() * 16)) {
-            player.sendMessage(getMessage("LAND_NEAR_TOWN"));
-            return false;
-        }
-        return true;
+
+        //If Towny is enabled
+        if (!settings.getTownySettings().isUseTowny())
+            return true;
+        if (townyAPI.isWilderness(location))
+            return isOutsideTownRadius(player, location, settings.getTownySettings().getLandDistanceFromUnauthorizedZones() * 16);
+        else
+            return getRespectiveTerritory(player, location).isLocationSafe(settings.getTownySettings());
+
     }
 
     public boolean canLaunch(Rocket rocket, Player player) {
@@ -52,11 +61,18 @@ public class RocketManager extends CoreManager {
             player.sendMessage(getMessage("NO_SPACE"));
             return false;
         }
-        if (!rocket.isOutsideTownRadius(location, rocket.getLaunchingRadius() * 16)) {
+        if (!settings.getTownySettings().isUseTowny())
+            return true;
+        if (townyAPI.isWilderness(location))
+            return isOutsideTownRadius(player, location, settings.getTownySettings().getLandDistanceFromUnauthorizedZones() * 16);
+        else
+            return getRespectiveTerritory(player, location).isLocationSafe(settings.getTownySettings());
+
+        /*if (!rocket.isOutsideTownRadius(location, rocket.getLaunchingRadius() * 16)) {
             player.sendMessage(getMessage("LAUNCH_NEAR_TOWN"));
             return false;
         }
-        return true;
+        return true;*/
     }
 
     private boolean canTravel(Rocket rocket, Player player) {
@@ -118,6 +134,7 @@ public class RocketManager extends CoreManager {
         launch(rocket, player, location);
         return true;
     }
+
     //TODO:-
     // - Different models for launch and landing
     private void launch(Rocket rocket, Player player, Location location) {
@@ -126,6 +143,7 @@ public class RocketManager extends CoreManager {
         ArmorStand stand = settings.getRocket(player);
         new BukkitRunnable() {
             int count = 0;
+
             @Override
             public void run() {
                 count++;
@@ -141,14 +159,17 @@ public class RocketManager extends CoreManager {
             }
         }.runTaskTimer(plugin, 0L, 20L);
     }
+
     //TODO :-
     // - Grace period after landing
     // - ability to use wasd to maneuver rocket on landing(possible use a different entity than armor stand?
+    // - https://github.com/TrollsterCooleg/Parachute/blob/master/src/main/java/me/cooleg/parachute/Events/PlayerMove.java
     // - configurable landing particle offset(Y Axis)
     private void land(Rocket rocket, Player player, Location location, ArmorStand stand) {
         Location loc = new Location(location.getWorld(), location.getX(), location.getY() + settings.getLandingDistance(), location.getZ());
         stand.eject();
         stand.teleport(loc);
+        stand.getEquipment().setHelmet(settings.getLandItem());
         player.teleport(loc);
         new BukkitRunnable() {
             @Override
@@ -176,5 +197,73 @@ public class RocketManager extends CoreManager {
                 }.runTaskLater(plugin, 20L);
             }
         }.runTaskTimer(plugin, 20L, 40L);
+    }
+
+    private TerritoryType getRespectiveTerritory(Player player, Location location) {
+        Resident resident = townyAPI.getResident(player);
+        Town landTown;
+        //If landing location is in own town
+        if ((landTown = townyAPI.getTown(location)).hasResident(player))
+            return TerritoryType.OWN_TOWN;
+
+        Town residentTown = resident.getTownOrNull();
+        //If resident doesn't have a town, it's neutral territory
+        if (residentTown == null)
+            return TerritoryType.NEUTRAL_TERRITORY;
+        Nation landNation;
+
+        if (landTown.hasNation() && (landNation = landTown.getNationOrNull()) != null && landNation.hasResident(resident))
+            return TerritoryType.OWN_NATION;
+        if (landTown.hasAlly(residentTown))
+            return TerritoryType.ALLY_TERRITORY;
+        if (landTown.hasEnemy(residentTown))
+            return TerritoryType.ENEMY_TERRITORY;
+        return TerritoryType.NEUTRAL_TERRITORY;
+    }
+
+    public boolean isOutsideTownRadius(Player player, Location location, int radius) {
+        if (!plugin.isTowny() || radius <= 0) {
+            return true;
+        }
+        TownyAPI towny = TownyAPI.getInstance();
+        double locationX = location.getX();
+        double locationY = location.getY();
+        double locationZ = location.getZ();
+        for (double x = -radius; x <= radius; x++) {
+            for (double z = -radius; z <= radius; z++) {
+                Location loc = new Location(location.getWorld(), locationX + x, locationY, locationZ + z);
+                if (!towny.isWilderness(loc) && !getRespectiveTerritory(player, location).isLocationSafe(settings.getTownySettings())) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private enum TerritoryType {
+        OWN_TOWN,
+        OWN_NATION,
+        ALLY_TERRITORY,
+        ENEMY_TERRITORY,
+        NEUTRAL_TERRITORY,
+        WILDERNESS;
+
+        boolean isLocationSafe(RocketSettings.TownySettings settings) {
+            switch (this) {
+                case OWN_TOWN:
+                    return settings.isLandOwnTown();
+                case OWN_NATION:
+                    return settings.isLandOwnNation();
+                case ALLY_TERRITORY:
+                    return settings.isLandAllyTerritory();
+                case ENEMY_TERRITORY:
+                    return settings.isLandEnemyTerritory();
+                case NEUTRAL_TERRITORY:
+                    return settings.isLandNeutralTerritory();
+                case WILDERNESS:
+                    return true;
+            }
+            return false;
+        }
     }
 }

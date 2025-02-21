@@ -14,7 +14,10 @@ public class RocketListener implements Listener {
     public RocketListener(RocketManager rocketManager) {
         this.rocketManager = rocketManager;
     }
-
+    //TODO:-
+    // - Handle grace period
+    // - Handle placing down rockets
+    // - Handle picking up rockets
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
         if (!rocketManager.getSettings().hasUrl()) {
