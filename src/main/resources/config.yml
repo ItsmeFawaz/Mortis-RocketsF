@@ -71,8 +71,6 @@ rockets:
     location2: 300,-1400
     specific-location: true
     cost: 100
-    launching-radius: 8
-    landing-radius: 6
     ocean-checker: true
   JUPITER:
     launching-message: "&aYou are launching to Jupiter"
@@ -82,6 +80,4 @@ rockets:
     location2: 300,-1400
     specific-location: true
     cost: 50
-    launching-radius: 8
-    landing-radius: 6
     ocean-checker: true

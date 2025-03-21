@@ -60,13 +60,13 @@ public class RocketCommand implements TabExecutor {
                 }
                 RocketLocation rocketLocation = new RocketLocation(x, z);
                 if (args[args.length - 1].equalsIgnoreCase("confirm")) {
-                    return manager.getRocketManager().travel(rocket, target, rocketLocation);
+                    return manager.getRocketManager().travel(rocket, target, rocketLocation, false);
                 }else {
                     manager.getRocketManager().travel(target, rocket, getCommand(args));
                 }
             }else {
                 if (args[args.length - 1].equalsIgnoreCase("confirm")) {
-                    return manager.getRocketManager().travel(rocket, target);
+                    return manager.getRocketManager().travel(rocket, target, false);
                 }else {
                     manager.getRocketManager().travel(target, rocket, getCommand(args));
                 }
@@ -79,6 +79,12 @@ public class RocketCommand implements TabExecutor {
         }
         Player player = (Player) sender;
         if (args[0].equalsIgnoreCase("travel")) {
+            //If Player is sitting inside a rocket, return
+            if(!(player.getVehicle() != null && manager.getRocketManager().isRocket(player.getVehicle()))) {
+                sender.sendMessage("You have to be inside a rocket!");
+                //TODO: Send Has to be inside a rocket message
+                return false;
+            }
             if (!player.hasPermission("rockets.travel")) {
                 sender.sendMessage(manager.getRocketManager().getMessage("NO_PERMISSION"));
                 return false;
@@ -107,13 +113,13 @@ public class RocketCommand implements TabExecutor {
                 }
                 RocketLocation rocketLocation = new RocketLocation(x, z);
                 if (args[args.length - 1].equalsIgnoreCase("confirm")) {
-                    return manager.getRocketManager().travel(rocket, player, rocketLocation);
+                    return manager.getRocketManager().travel(rocket, player, rocketLocation, true);
                 }else {
                     manager.getRocketManager().travel(player, rocket, getCommand(args));
                 }
             }else {
                 if (args[args.length - 1].equalsIgnoreCase("confirm")) {
-                    return manager.getRocketManager().travel(rocket, player);
+                    return manager.getRocketManager().travel(rocket, player, true);
                 }else {
                     manager.getRocketManager().travel(player, rocket, getCommand(args));
                 }

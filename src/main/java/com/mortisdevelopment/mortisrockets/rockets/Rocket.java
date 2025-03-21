@@ -22,8 +22,6 @@ public class Rocket {
     private final RocketLocation location2;
     private final boolean specificLocation;
     private final double cost;
-    private final int launchingRadius;
-    private final int landingRadius;
     private final boolean oceanChecker;
     private final String launchingMessage;
     private final String landingMessage;
@@ -35,8 +33,6 @@ public class Rocket {
         this.location2 = location2;
         this.specificLocation = specificLocation;
         this.cost = cost;
-        this.launchingRadius = launchingRadius;
-        this.landingRadius = landingRadius;
         this.oceanChecker = oceanChecker;
         this.launchingMessage = launchingMessage;
         this.landingMessage = landingMessage;

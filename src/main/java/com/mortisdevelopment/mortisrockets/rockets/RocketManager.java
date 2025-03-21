@@ -15,7 +15,9 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.text.DecimalFormat;
@@ -97,7 +99,7 @@ public class RocketManager extends CoreManager {
         player.sendMessage(deny);
     }
 
-    public boolean travel(Rocket rocket, Player player, RocketLocation rocketLocation) {
+    public boolean travel(Rocket rocket, Player player, RocketLocation rocketLocation, boolean fromRocket) {
         if (!canTravel(rocket, player)) {
             return false;
         }
@@ -113,12 +115,13 @@ public class RocketManager extends CoreManager {
         if (!canLand(rocket, player, location)) {
             return false;
         }
-        rocket.removeCost(player);
-        launch(rocket, player, location);
+        if(!fromRocket)
+            rocket.removeCost(player);
+        launch(rocket, player, location, fromRocket);
         return true;
     }
 
-    public boolean travel(Rocket rocket, Player player) {
+    public boolean travel(Rocket rocket, Player player, boolean fromRocket) {
         if (!canTravel(rocket, player)) {
             return false;
         }
@@ -130,24 +133,30 @@ public class RocketManager extends CoreManager {
         if (!canLand(rocket, player, location)) {
             return false;
         }
-        rocket.removeCost(player);
-        launch(rocket, player, location);
+        if(!fromRocket)
+            rocket.removeCost(player);
+        launch(rocket, player, location, fromRocket);
         return true;
     }
 
     //TODO:-
     // - Different models for launch and landing
-    private void launch(Rocket rocket, Player player, Location location) {
+    private void launch(Rocket rocket, Player player, Location location, boolean fromRocket) {
         traveling.add(player.getUniqueId());
         player.sendMessage(rocket.getLaunchingMessage());
-        ArmorStand stand = settings.getRocket(player);
+        ArmorStand stand;
+        if(!fromRocket) {
+            stand = settings.getRocket(player);
+            stand.addPassenger(player);
+        } else {
+            stand = (ArmorStand) player.getVehicle();
+        }
+
         new BukkitRunnable() {
             int count = 0;
-
             @Override
             public void run() {
                 count++;
-                stand.addPassenger(player);
                 stand.getWorld().spawnParticle(Particle.LAVA, stand.getLocation(), 50);
                 player.getWorld().playSound(player.getLocation(), Sound.BLOCK_LAVA_EXTINGUISH, 1, 1);
                 if (count <= settings.getLaunchingTime()) {
@@ -198,6 +207,18 @@ public class RocketManager extends CoreManager {
             }
         }.runTaskTimer(plugin, 20L, 40L);
     }
+    public ArmorStand spawnRocket(Location location) {
+        ArmorStand stand = location.getWorld().spawn(location, ArmorStand.class);
+        stand.getEquipment().setHelmet(settings.getLaunchItem(), true);
+        stand.addDisabledSlots(EquipmentSlot.HEAD);
+        stand.setCanPickupItems(false);
+        stand.setSilent(true);
+        //stand.setInvulnerable(true);
+        stand.setCanMove(true);
+        stand.setAI(true);
+        stand.setInvisible(true);
+        return stand;
+    }
 
     private TerritoryType getRespectiveTerritory(Player player, Location location) {
         Resident resident = townyAPI.getResident(player);
@@ -238,6 +259,13 @@ public class RocketManager extends CoreManager {
             }
         }
         return true;
+    }
+    public boolean isRocket(Entity entity) {
+        if(entity instanceof ArmorStand) {
+            ArmorStand stand = (ArmorStand) entity;
+            return stand.getEquipment().getHelmet().isSimilar(settings.getLaunchItem()) || stand.getEquipment().getHelmet().isSimilar(settings.getLandItem());
+        }
+        return false;
     }
 
     private enum TerritoryType {
