@@ -12,9 +12,15 @@ messages:
   no-console: "&cThis command can only be executed by a player"
   travel-usage: "&cUsage: /rocket travel <rocket-id>"
   already-traveling: "&cYou are already traveling"
+  not-inside-rocket: "&cYou have to be inside a rocket to travel!"
   confirmation: "&cThe cost for this travel is %cost%. Are you sure you want to travel?"
   confirmation-accept: "&c[ACCEPT]"
   confirmation-deny: "&c[DENY]"
+  pickup-rocket: "&aPicking up the rocket, please stay still for 5 seconds"
+  pickup-rocket-fail: "§c§lRocket placement cancelled!"
+  pickup-rocket-success: "&aRocket picked up!"
+  place-rocket: "&aPlacing down the rocket, please stay still for 5 seconds"
+  place-rocket-fail: "§c§lRocket placement cancelled!"
 
 settings:
   apply-texturepack: false
@@ -38,10 +44,42 @@ settings:
       landing-particle-offset: -3.0
       #if possible a method to select particles to use, sizes, how many, etc?
   launch:
+    #how long should the rocket wait after being fueled before actually lifting off
+    liftoff-time: 10
+    #how long the rocket rides into the air before teleporting to another dimension/location and doing landing animation
     time: 5 # in seconds
+    #how fast the rocket moves in the air
     speed: 2
+    #how long in seconds can a rocket be on the ground with no one inside before it breaks back into its item form
+    inactivity-timer: 10
+    #should players be invincible in the rocket while preparing for launch?
+    launch-invincibility: false
+    require-fuel: true
+    fuel:
+      dried_kelp_block: 10
+      coal_block: 90
+    #if set to true, each fuel item must be inserted one by one, can be tedious, if false inserting fuel will insert as much fuel item in the hand that is needed for the trip, or assuming there isnt enough fuel, the whole stack
+    insert-fuel-individually: true
   land:
+    #distance from the ground the rocket spawns in at, rocket falls from this distance until it lands on the ground
     distance: 50
+    #allows players to slightly adjust the rocket's position during landing using wasd, similar to the hellpods in helldivers 2 or drop pods in planetside 2
+    allow-movement: false
+    movement speed: 0.8
+    #drops the rocket item on landing, in case you want rockets to be reusable
+    drop-rocket-on-landing: true
+    #time in seconds that a player remains in the rocket once landed before being dismounted, prevents players from landing right on top of enemies and immediately being able to attack them
+    # set to 0 to disable
+    landing-dismount-time: 20
+    #should the player be invulnerable to damage while still in the rocket and waiting to be dismounted?
+    protect-while-dismounting: false
+  deployment:
+    #how long it takes after right clicking with the item to deploy the rocket
+    place-time: 5
+    #how long it takes after left clicking rocket from outside before it turns into its item form
+    pickup-time: 5
+    #how long it takes to insert fuel
+    fuel-time: 2
   towny-integration:
     use-towny: true
     launch:

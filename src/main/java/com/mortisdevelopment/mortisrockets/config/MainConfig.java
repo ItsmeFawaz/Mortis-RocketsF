@@ -32,6 +32,7 @@ public class MainConfig extends Config {
         }
         configManager.getManager().setRocketManager(new RocketManager(settings));
         loadRockets(config.getConfigurationSection("rockets"));
+        configManager.getManager().getRocketManager().getFuelManager().loadFuelItems(config.getConfigurationSection("settings.launch.fuel"));
         configManager.getManager().getRocketManager().loadMessages(config.getConfigurationSection("messages"));
     }
 
@@ -47,7 +48,24 @@ public class MainConfig extends Config {
         int launchingSpeed = section.getInt("launch.speed");
         int landingDistance = section.getInt("land.distance");
         double landingParticleOffset = section.getDouble("item.landing.landing-particle-offset");
-        return new RocketSettings(url, launchItem, landingItem, inventoryItem , launchingTime, launchingSpeed, landingDistance, landingParticleOffset, section.getConfigurationSection("towny-integration"));
+
+        return new RocketSettings(url,
+                launchItem,
+                landingItem,
+                inventoryItem,
+                section.getInt("deployment.place-time"),
+                section.getInt("deployment.pickup-time"),
+                section.getInt("deployment.fuel-time"),
+                launchingTime,
+                section.getInt("launch.liftoff-time"),
+                launchingSpeed,
+                section.getBoolean("launch.launch-invincibility"),
+                section.getBoolean("launch.require-fuel"),
+                section.getBoolean("launch.insert-fuel-individually"),
+                landingDistance,
+                landingParticleOffset,
+                section.getInt("launch.inactivity-timer"),
+                section.getConfigurationSection("towny-integration"));
     }
     private ItemStack getItem(ConfigurationSection itemSection) {
         Material material;

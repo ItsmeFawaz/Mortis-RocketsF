@@ -1,5 +1,6 @@
 package com.mortisdevelopment.mortisrockets.rockets;
 
+import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.block.BlockFace;
@@ -17,37 +18,53 @@ import org.spigotmc.event.entity.EntityDismountEvent;
 import org.spigotmc.event.entity.EntityMountEvent;
 
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.Iterator;
+import java.util.Map;
 
 public class RocketListener implements Listener {
 
     private final RocketManager rocketManager;
-    private final HashMap<ArmorStand, Long> rockets;
-    private final HashMap<Player, pendingRocketPlacement> rocketLocations;
+    private final HashMap<Player, PendingRocketPlacement> rocketPlacements;
+    private final HashMap<Player, PendingRocketPickup> rocketPickups;
     private final BukkitTask timeScheduler;
 
     public RocketListener(RocketManager rocketManager) {
         this.rocketManager = rocketManager;
-        rockets = new HashMap<>();
-        rocketLocations = new HashMap<>();
+        rocketPlacements = new HashMap<>();
+        rocketPickups = new HashMap<>();
         timeScheduler = Bukkit.getScheduler().runTaskTimer(rocketManager.getPlugin(), () -> {
             //TODO:- Do not move message, placing down rocket
             // - Take the grace period time from config
             long currentTime = System.currentTimeMillis();
-            rockets.entrySet().stream().forEach(x -> {
-                if (x.getValue() != -1 && x.getValue() < currentTime) {
-                    x.getKey().getLocation().getWorld().dropItem(x.getKey().getLocation(), rocketManager.getSettings().getInventoryItem());
-                    rockets.remove(x.getKey());
-                    x.getKey().remove();
+            Iterator<Map.Entry<ArmorStand, Long>> rocketsIterator = rocketManager.getPlacedRockets().entrySet().iterator();
+            while (rocketsIterator.hasNext()) {
+                Map.Entry<ArmorStand, Long> entry = rocketsIterator.next();
+                if (entry.getValue() != -1 && entry.getValue() < currentTime) {
+                    entry.getKey().getLocation().getWorld().dropItem(entry.getKey().getLocation(), rocketManager.getSettings().getInventoryItem());
+                    rocketsIterator.remove();
+                    entry.getKey().remove();
                 }
-            });
-            rocketLocations.entrySet().stream().filter(x -> x.getValue().getTime() < currentTime).forEach(x -> {
-                ArmorStand rocket = rocketManager.spawnRocket(x.getValue().getLocation());
-                rockets.put(rocket, currentTime + 20000);
-                rocketLocations.remove(x.getKey());
-                //TODO:- Rocket placement message
-            });
+            }
+            Iterator<Map.Entry<Player, PendingRocketPlacement>> rocketLocationsIterator = rocketPlacements.entrySet().iterator();
+            while (rocketLocationsIterator.hasNext()) {
+                Map.Entry<Player, PendingRocketPlacement> entry = rocketLocationsIterator.next();
+                if (entry.getValue().getTime() < currentTime) {
+                    ArmorStand rocket = rocketManager.spawnRocket(entry.getValue().getLocation(), true);
+                    rocketManager.getPlacedRockets().put(rocket, currentTime + (rocketManager.getSettings().getInactivityTime()*1000L));
+                    rocketLocationsIterator.remove();
+                }
+            }
+            Iterator<Map.Entry<Player, PendingRocketPickup>> rocketPickupIterator = rocketPickups.entrySet().iterator();
+            while (rocketPickupIterator.hasNext()) {
+                Map.Entry<Player, PendingRocketPickup> entry = rocketPickupIterator.next();
+                if (entry.getValue().getTime() < currentTime) {
+                    entry.getValue().getRocket().remove();
+                    entry.getKey().getInventory().addItem(rocketManager.getSettings().getInventoryItem());
+                    rocketManager.getPlacedRockets().remove(entry.getValue().getRocket());
+                    rocketPickupIterator.remove();
+                }
+            }
+
         }, 0, 20);
     }
     //TODO:-
@@ -62,8 +79,8 @@ public class RocketListener implements Listener {
     @EventHandler
     public void onMount(EntityMountEvent evt) {
         ArmorStand rocket;
-        if(evt.getMount() instanceof ArmorStand && rockets.containsKey((rocket = (ArmorStand) evt.getMount()))) {
-            rockets.put(rocket, -1L);
+        if(evt.getMount() instanceof ArmorStand && rocketManager.getPlacedRockets().containsKey((rocket = (ArmorStand) evt.getMount()))) {
+            rocketManager.getPlacedRockets().put(rocket, -1L);
         }
     }
     @EventHandler
@@ -74,8 +91,8 @@ public class RocketListener implements Listener {
         }
         Player player = (Player) e.getEntity();
         ArmorStand rocket;
-        if(e.getDismounted() instanceof ArmorStand && rockets.containsKey((rocket = (ArmorStand) e.getDismounted()))) {
-            rockets.put(rocket, System.currentTimeMillis() + 20000);
+        if(e.getDismounted() instanceof ArmorStand && rocketManager.getPlacedRockets().containsKey((rocket = (ArmorStand) e.getDismounted()))) {
+            rocketManager.getPlacedRockets().put(rocket, System.currentTimeMillis() + (rocketManager.getSettings().getInactivityTime()*1000L));
             return;
         }
         if (!rocketManager.getTraveling().contains(player.getUniqueId())) {
@@ -88,16 +105,21 @@ public class RocketListener implements Listener {
         if(!(event.getEntity() instanceof ArmorStand))
             return;
         ArmorStand stand = (ArmorStand) event.getEntity();
-        if(!rockets.containsKey(stand))
+        if(!(event.getDamager() instanceof Player))
             return;
-        event.setCancelled(true);
+        Player player = (Player) event.getDamager();
+        if(!rocketManager.getPlacedRockets().containsKey(stand))
+            return;
+        rocketPickups.put(player, new PendingRocketPickup(stand));
+        player.sendMessage(rocketManager.getMessage("PICKUP_ROCKET"));
+        rocketManager.getPlacedRockets().put(stand, System.currentTimeMillis() + (rocketManager.getSettings().getInactivityTime()*1000L));
     }
     @EventHandler
     public void onDamage(EntityDamageEvent e) {
         //pseudo invulnerability for the armorstand.
         if(e.getEntity() instanceof ArmorStand) {
             ArmorStand stand = (ArmorStand) e.getEntity();
-            if(rockets.containsKey(stand)) {
+            if(rocketManager.getPlacedRockets().containsKey(stand)) {
                 e.setCancelled(true);
                 return;
             }
@@ -113,13 +135,18 @@ public class RocketListener implements Listener {
     }
     @EventHandler
     public void onMove(PlayerMoveEvent event) {
-        if(!rocketLocations.containsKey(event.getPlayer()))
+        /*if(rocketManager.getLanding().containsKey(event.getPlayer().getUniqueId())) {
+            final Vector vector = event.getPlayer().getLocation().toVector().subtract(rocketManager.getLanding().get(event.getPlayer().getUniqueId())).multiply(.8 * 1.1F);
+            event.getPlayer().setVelocity(vector*//*.setY(-.2)*//*);
+        }*/
+        /*if(event.getFrom().getX() == event.getTo().getX() || event.getFrom().getZ() == event.getTo().getZ())
+            return;*/
+        if(!event.hasChangedBlock())
             return;
-        if(event.getFrom().getX() == event.getTo().getX() || event.getFrom().getZ() == event.getTo().getZ())
+        if(!rocketPlacements.containsKey(event.getPlayer()))
             return;
-        rocketLocations.remove(event.getPlayer());
-        //TODO:- Rocket placement cancelled message
-        event.getPlayer().sendMessage("§c§lRocket placement cancelled!");
+        rocketPlacements.remove(event.getPlayer());
+        event.getPlayer().sendMessage(rocketManager.getMessage("PICKUP_ROCKET_FAIL"));
         event.getPlayer().getInventory().addItem(rocketManager.getSettings().getInventoryItem());
     }
     @EventHandler
@@ -142,8 +169,8 @@ public class RocketListener implements Listener {
             return;
         }
         //TODO: - Check placement location, if blocks above
-        rocketLocations.put(player, new pendingRocketPlacement(player, event.getClickedBlock().getLocation().add(0.5, 1, 0.5)));
-        player.sendMessage("§a§lPlacing Rocket! Do not move for 5 seconds.");
+        rocketPlacements.put(player, new PendingRocketPlacement(event.getClickedBlock().getLocation().add(0.5, 1, 0.5)));
+        player.sendMessage(rocketManager.getMessage("PLACE_ROCKET"));
         //TODO:- Rocket placement 5 second delay message, do not move
     }
     /*TODO:-anyone can sit in it, anyone can break it unless its occupied*/
@@ -156,34 +183,33 @@ public class RocketListener implements Listener {
         ArmorStand stand = (ArmorStand) event.getRightClicked();
 
         //If the Armor Stand is not a rocket, return
-        if(!rockets.containsKey(stand))
+        if(!rocketManager.getPlacedRockets().containsKey(stand))
             return;
 
         event.setCancelled(true);
         stand.addPassenger(event.getPlayer());
     }
-    private class pendingRocketPlacement {
-        private final Player player;
+    @Getter
+    public class PendingRocketPlacement {
         private final Location location;
         private final long time;
 
-        public pendingRocketPlacement(Player player, Location location) {
-            this.player = player;
+        public PendingRocketPlacement(Location location) {
             this.location = location;
-            this.time = System.currentTimeMillis() + 5000;
+            this.time = System.currentTimeMillis() + (rocketManager.getSettings().getPlaceTime() * 1000L);
         }
 
+    }
+    @Getter
+    public class PendingRocketPickup {
+        //TODO: FIX MOVEMENT PREVENTING PICKUP
+        private final ArmorStand rocket;
+        private final long time;
 
-        public Player getPlayer() {
-            return player;
+        public PendingRocketPickup(ArmorStand rocket) {
+            this.rocket = rocket;
+            this.time = System.currentTimeMillis() + (rocketManager.getSettings().getPickupTime()* 1000L);
         }
 
-        public Location getLocation() {
-            return location;
-        }
-
-        public long getTime() {
-            return time;
-        }
     }
 }

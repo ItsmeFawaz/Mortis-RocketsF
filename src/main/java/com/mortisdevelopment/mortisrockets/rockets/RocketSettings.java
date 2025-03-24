@@ -14,21 +14,42 @@ public class RocketSettings {
     private final ItemStack launchItem;
     private final ItemStack landItem;
     private final ItemStack inventoryItem;
+    private final int placeTime;
+    private final int pickupTime;
+    private final int fuelTime;
     private final int launchingTime;
+    private final int launchLiftoffTime; //TODO: Set up a timer with countdown after fueling to launch, use this time for timer
     private final int launchingSpeed;
+    private final boolean launchInvincibility; // TODO: Make player invulnerable and unable to leave the rocket once launch liftoff has started, Make exceptions for when the player dies if its turned off
+    private final boolean requireFuel;//TODO: If fuel is required, make the player unable to launch without fuel, otherwise initiate launch liftoff time immediately
+    private final boolean insertFuelIndividually;
     private final int landingDistance;
+    /*private final boolean landingAllowMovement; //TODO: use PlayerMove event to check if player is moving, if so, cancel sideways movement
+    private final double landingMoveSpeed; //TODO: use this value to set movement speed
+    private final boolean dropRocketOnLand; //TODO: Drop the rocket as an item on land or set it as an entity like when placing
+    private final int landingDismountTime; //TODO: Grace period before player can dismount, check config options for grace period
+    private final boolean protectWhileDismount; //TODO:  invulnerability while dismount time*/
     private final double landingParticleOffset;
+    private final int inactivityTime;
     private final TownySettings townySettings;
 
-    public RocketSettings(String url, ItemStack launchItem, ItemStack landItem, ItemStack inventoryItem, int launchingTime, int launchingSpeed, int landingDistance, double landingParticleOffset, ConfigurationSection townySettingsSection) {
+    public RocketSettings(String url, ItemStack launchItem, ItemStack landItem, ItemStack inventoryItem, int placeTime, int pickupTime, int fuelTime, int launchingTime, int launchLiftoffTime,  int launchingSpeed, boolean launchInvincibility, boolean requireFuel, boolean insertFuelIndividually, int landingDistance, double landingParticleOffset, int inactivityTime, ConfigurationSection townySettingsSection) {
         this.url = url;
         this.launchItem = launchItem;
         this.landItem = landItem;
         this.inventoryItem = inventoryItem;
+        this.placeTime = placeTime;
+        this.pickupTime = pickupTime;
+        this.fuelTime = fuelTime; //TODO: Add fuel mechanism
         this.launchingTime = launchingTime;
+        this.launchLiftoffTime = launchLiftoffTime;
         this.launchingSpeed = launchingSpeed;
+        this.launchInvincibility = launchInvincibility;
+        this.requireFuel = requireFuel;
+        this.insertFuelIndividually = insertFuelIndividually;
         this.landingDistance = landingDistance;
         this.landingParticleOffset = landingParticleOffset;
+        this.inactivityTime = inactivityTime;
         this.townySettings = loadTownySettings(townySettingsSection);
     }
 

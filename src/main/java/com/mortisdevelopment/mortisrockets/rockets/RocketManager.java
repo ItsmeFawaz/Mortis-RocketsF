@@ -2,6 +2,7 @@ package com.mortisdevelopment.mortisrockets.rockets;
 
 import com.mortisdevelopment.mortisrockets.MortisRockets;
 import com.mortisdevelopment.mortisrockets.managers.CoreManager;
+import com.mortisdevelopment.mortisrockets.managers.FuelManager;
 import com.palmergames.bukkit.towny.TownyAPI;
 import com.palmergames.bukkit.towny.object.Nation;
 import com.palmergames.bukkit.towny.object.Resident;
@@ -10,15 +11,13 @@ import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextReplacementConfig;
 import net.kyori.adventure.text.event.ClickEvent;
-import org.bukkit.Location;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.Vector;
 
 import java.text.DecimalFormat;
 import java.util.*;
@@ -28,16 +27,23 @@ public class RocketManager extends CoreManager {
     //TODO:-
     // - Handle disconnects, crashes, deaths
     private final MortisRockets plugin = MortisRockets.getInstance();
+    private final FuelManager fuelManager;
     private final RocketSettings settings;
     private final Map<String, Rocket> rocketById;
+    private final HashMap<ArmorStand, Long> placedRockets;
     private final Set<UUID> traveling;
+    private final HashMap<UUID, Vector> landing;
     private final TownyAPI townyAPI = TownyAPI.getInstance();
 
     public RocketManager(RocketSettings settings) {
         this.settings = settings;
         this.rocketById = new HashMap<>();
         this.traveling = new HashSet<>();
+        this.landing = new HashMap<>();
+        placedRockets = new HashMap<>();
+        fuelManager = new FuelManager(this);
         plugin.getServer().getPluginManager().registerEvents(new RocketListener(this), plugin);
+        plugin.getServer().getPluginManager().registerEvents(fuelManager, plugin);
     }
 
     public boolean canLand(Rocket rocket, Player player, Location location) {
@@ -139,8 +145,6 @@ public class RocketManager extends CoreManager {
         return true;
     }
 
-    //TODO:-
-    // - Different models for launch and landing
     private void launch(Rocket rocket, Player player, Location location, boolean fromRocket) {
         traveling.add(player.getUniqueId());
         player.sendMessage(rocket.getLaunchingMessage());
@@ -150,6 +154,7 @@ public class RocketManager extends CoreManager {
             stand.addPassenger(player);
         } else {
             stand = (ArmorStand) player.getVehicle();
+            placedRockets.remove(stand);
         }
 
         new BukkitRunnable() {
@@ -163,23 +168,68 @@ public class RocketManager extends CoreManager {
                     stand.setVelocity(stand.getVelocity().setY(stand.getVelocity().getY() + settings.getLaunchingSpeed()));
                     return;
                 }
-                land(rocket, player, location, stand);
+                landWithMovement(rocket, player, location, stand);
                 cancel();
             }
         }.runTaskTimer(plugin, 0L, 20L);
     }
-
     //TODO :-
     // - Grace period after landing
     // - ability to use wasd to maneuver rocket on landing(possible use a different entity than armor stand?
     // - https://github.com/TrollsterCooleg/Parachute/blob/master/src/main/java/me/cooleg/parachute/Events/PlayerMove.java
     // - configurable landing particle offset(Y Axis)
+    private void landWithMovement(Rocket rocket, Player player, Location location, ArmorStand stand) {
+        Location loc = new Location(location.getWorld(), location.getX(), location.getY() + settings.getLandingDistance(), location.getZ());
+        stand.remove();
+        stand.teleport(loc);
+        stand.getEquipment().setHelmet(settings.getLandItem());
+        player.teleport(loc);
+        ArmorStand landingStand = spawnRocket(loc, false);
+        landing.put(player.getUniqueId(), player.getLocation().toVector());
+        player.addPassenger(landingStand);
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                //player.addPassenger(landingStand);
+                stopDropSpeed(player);
+                player.getWorld().playSound(player.getLocation(), Sound.BLOCK_LAVA_EXTINGUISH, 1, 1);
+                player.setGravity(false);
+                landingStand.getWorld().spawnParticle(Particle.LAVA, landingStand.getLocation().add(0, settings.getLandingParticleOffset(), 0), 50);
+                if(isBlockBelow(player.getLocation())) {
+                    performLanding(player, rocket, landingStand);
+                    cancel();
+                    return;
+                }
+                /*if (player.isDead() || player.isOnGround() || player.isInLava() || player.isInPowderedSnow() || player.isInWaterOrBubbleColumn() || player.getPassengers().isEmpty()) {
+                    traveling.remove(player.getUniqueId());
+                    landing.remove(player.getUniqueId());
+                    player.sendMessage(rocket.getLandingMessage());
+                    player.setGravity(true);
+                    player.eject();
+                    landingStand.remove();
+                    cancel();
+                    return;
+                }*/
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        //player.addPassenger(landingStand);
+                        //stopDropSpeed(player);
+                        player.setGravity(true);
+                        landingStand.getWorld().spawnParticle(Particle.LAVA, landingStand.getLocation().add(0, settings.getLandingParticleOffset(), 0), 50);
+                        player.getWorld().playSound(player.getLocation(), Sound.BLOCK_LAVA_EXTINGUISH, 1, 1);
+                    }
+                }.runTaskLater(plugin, 20L);
+            }
+        }.runTaskTimer(plugin, 20L, 40L);
+    }
+    @Deprecated
     private void land(Rocket rocket, Player player, Location location, ArmorStand stand) {
         Location loc = new Location(location.getWorld(), location.getX(), location.getY() + settings.getLandingDistance(), location.getZ());
         stand.eject();
         stand.teleport(loc);
-        stand.getEquipment().setHelmet(settings.getLandItem());
         player.teleport(loc);
+        stand.addPassenger(player);
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -207,9 +257,9 @@ public class RocketManager extends CoreManager {
             }
         }.runTaskTimer(plugin, 20L, 40L);
     }
-    public ArmorStand spawnRocket(Location location) {
+    public ArmorStand spawnRocket(Location location, boolean isLaunch) {
         ArmorStand stand = location.getWorld().spawn(location, ArmorStand.class);
-        stand.getEquipment().setHelmet(settings.getLaunchItem(), true);
+        stand.getEquipment().setHelmet(isLaunch ? settings.getLaunchItem() : settings.getLandItem(), true);
         stand.addDisabledSlots(EquipmentSlot.HEAD);
         stand.setCanPickupItems(false);
         stand.setSilent(true);
@@ -267,7 +317,36 @@ public class RocketManager extends CoreManager {
         }
         return false;
     }
-
+    private void performLanding(Player player, Rocket rocket, ArmorStand landingStand) {
+        traveling.remove(player.getUniqueId());
+        landing.remove(player.getUniqueId());
+        player.sendMessage(rocket.getLandingMessage());
+        player.setGravity(true);
+        player.eject();
+        player.setFallDistance(0);
+        //TODO: Config option to either remove the rocket or keep it, if kept, player can re-enter
+        landingStand.remove();
+    }
+    private boolean isBlockBelow(Location location) {
+        boolean blockBelow = false;
+        for (int x = -1; x <= 1; x++) {
+            for (int y = -1; y <= 0; y++) {
+                for (int z = -1; z <= 1; z++) {
+                    if (location.add(x, y ,z).getBlock().getType() == Material.AIR) {continue;}
+                    blockBelow = true;
+                    break;
+                }
+                if (blockBelow) {break;}
+            }
+            if (blockBelow) {break;}
+        }
+        return blockBelow;
+    }
+    private void stopDropSpeed(Player player) {
+        Vector vector = player.getVelocity();
+        vector.setY(0);
+        player.setVelocity(vector);
+    }
     private enum TerritoryType {
         OWN_TOWN,
         OWN_NATION,

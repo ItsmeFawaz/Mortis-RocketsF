@@ -82,7 +82,7 @@ public class RocketCommand implements TabExecutor {
             //If Player is sitting inside a rocket, return
             if(!(player.getVehicle() != null && manager.getRocketManager().isRocket(player.getVehicle()))) {
                 sender.sendMessage("You have to be inside a rocket!");
-                //TODO: Send Has to be inside a rocket message
+                sender.sendMessage(manager.getRocketManager().getMessage("NOT_INSIDE_ROCKET"));
                 return false;
             }
             if (!player.hasPermission("rockets.travel")) {
@@ -112,17 +112,19 @@ public class RocketCommand implements TabExecutor {
                     return false;
                 }
                 RocketLocation rocketLocation = new RocketLocation(x, z);
-                if (args[args.length - 1].equalsIgnoreCase("confirm")) {
+                manager.getRocketManager().getFuelManager().startFueling(player, rocket, rocketLocation);
+                /*if (args[args.length - 1].equalsIgnoreCase("confirm")) {
                     return manager.getRocketManager().travel(rocket, player, rocketLocation, true);
                 }else {
                     manager.getRocketManager().travel(player, rocket, getCommand(args));
-                }
+                }*/
             }else {
-                if (args[args.length - 1].equalsIgnoreCase("confirm")) {
+                manager.getRocketManager().getFuelManager().startFueling(player, rocket);
+                /*if (args[args.length - 1].equalsIgnoreCase("confirm")) {
                     return manager.getRocketManager().travel(rocket, player, true);
                 }else {
                     manager.getRocketManager().travel(player, rocket, getCommand(args));
-                }
+                }*/
             }
             return true;
         }
