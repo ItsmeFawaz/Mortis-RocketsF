@@ -33,8 +33,7 @@ public class RocketListener implements Listener {
         rocketPlacements = new HashMap<>();
         rocketPickups = new HashMap<>();
         timeScheduler = Bukkit.getScheduler().runTaskTimer(rocketManager.getPlugin(), () -> {
-            //TODO:- Do not move message, placing down rocket
-            // - Take the grace period time from config
+            //TODO: - Take the grace period time from config
             long currentTime = System.currentTimeMillis();
             Iterator<Map.Entry<ArmorStand, Long>> rocketsIterator = rocketManager.getPlacedRockets().entrySet().iterator();
             while (rocketsIterator.hasNext()) {
@@ -67,8 +66,6 @@ public class RocketListener implements Listener {
 
         }, 0, 20);
     }
-    //TODO:-
-    // - Handle picking up rockets
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
         if (!rocketManager.getSettings().hasUrl()) {
@@ -102,14 +99,17 @@ public class RocketListener implements Listener {
     }
     @EventHandler
     public void onEntityDamageByPlayer(EntityDamageByEntityEvent event) {
-        if(!(event.getEntity() instanceof ArmorStand))
+        if(!(event.getEntity() instanceof ArmorStand stand))
             return;
-        ArmorStand stand = (ArmorStand) event.getEntity();
-        if(!(event.getDamager() instanceof Player))
+        if(!(event.getDamager() instanceof Player player))
             return;
-        Player player = (Player) event.getDamager();
         if(!rocketManager.getPlacedRockets().containsKey(stand))
             return;
+        if(rocketPickups.containsKey(player) || isBeingPickedUp(stand)) {
+            player.sendMessage(rocketManager.getMessage("ALREADY_PICKING_UP"));
+            return;
+        }
+
         rocketPickups.put(player, new PendingRocketPickup(stand));
         player.sendMessage(rocketManager.getMessage("PICKUP_ROCKET"));
         rocketManager.getPlacedRockets().put(stand, System.currentTimeMillis() + (rocketManager.getSettings().getInactivityTime()*1000L));
@@ -117,17 +117,15 @@ public class RocketListener implements Listener {
     @EventHandler
     public void onDamage(EntityDamageEvent e) {
         //pseudo invulnerability for the armorstand.
-        if(e.getEntity() instanceof ArmorStand) {
-            ArmorStand stand = (ArmorStand) e.getEntity();
+        if(e.getEntity() instanceof ArmorStand stand) {
             if(rocketManager.getPlacedRockets().containsKey(stand)) {
                 e.setCancelled(true);
                 return;
             }
         }
-        if (!(e.getEntity() instanceof Player)) {
+        if (!(e.getEntity() instanceof Player player)) {
             return;
         }
-        Player player = (Player) e.getEntity();
         if (!rocketManager.getTraveling().contains(player.getUniqueId())) {
             return;
         }
@@ -143,11 +141,14 @@ public class RocketListener implements Listener {
             return;*/
         if(!event.hasChangedBlock())
             return;
-        if(!rocketPlacements.containsKey(event.getPlayer()))
-            return;
-        rocketPlacements.remove(event.getPlayer());
-        event.getPlayer().sendMessage(rocketManager.getMessage("PICKUP_ROCKET_FAIL"));
-        event.getPlayer().getInventory().addItem(rocketManager.getSettings().getInventoryItem());
+        if(rocketPlacements.containsKey(event.getPlayer())) {
+            rocketPlacements.remove(event.getPlayer());
+            event.getPlayer().sendMessage(rocketManager.getMessage("PICKUP_ROCKET_FAIL"));
+            event.getPlayer().getInventory().addItem(rocketManager.getSettings().getInventoryItem());
+        }
+        if(rocketPickups.containsKey(event.getPlayer())) {
+
+        }
     }
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
@@ -156,14 +157,17 @@ public class RocketListener implements Listener {
             return;
         Player player = event.getPlayer();
 
-        if(event.getBlockFace() != BlockFace.UP) {
-            //TODO: CANNOT PLACE OTHER THAN TOP MESSAGE
-            return;
-        }
-
         if ((event.getHand() == EquipmentSlot.HAND && player.getInventory().getItemInMainHand().isSimilar(rocketManager.getSettings().getInventoryItem()))) {
+            if(event.getBlockFace() != BlockFace.UP) {
+                event.getPlayer().sendMessage(rocketManager.getMessage("ROCKET_PLACE_NOT_TOP"));
+                return;
+            }
             player.getInventory().getItemInMainHand().setAmount(player.getInventory().getItemInMainHand().getAmount() - 1);
         } else if(event.getHand() == EquipmentSlot.OFF_HAND && player.getInventory().getItemInOffHand().isSimilar(rocketManager.getSettings().getInventoryItem())) {
+            if(event.getBlockFace() != BlockFace.UP) {
+                event.getPlayer().sendMessage(rocketManager.getMessage("ROCKET_PLACE_NOT_TOP"));
+                return;
+            }
             player.getInventory().getItemInOffHand().setAmount(player.getInventory().getItemInOffHand().getAmount() - 1);
         } else {
             return;
@@ -177,10 +181,8 @@ public class RocketListener implements Listener {
     @EventHandler
     public void onInteractAt(PlayerInteractAtEntityEvent event) {
         //If the player is not right clicking an Armor Stand, return
-        if(!(event.getRightClicked() instanceof ArmorStand))
+        if(!(event.getRightClicked() instanceof ArmorStand stand))
             return;
-
-        ArmorStand stand = (ArmorStand) event.getRightClicked();
 
         //If the Armor Stand is not a rocket, return
         if(!rocketManager.getPlacedRockets().containsKey(stand))
@@ -188,6 +190,13 @@ public class RocketListener implements Listener {
 
         event.setCancelled(true);
         stand.addPassenger(event.getPlayer());
+    }
+    private boolean isBeingPickedUp(ArmorStand rocket) {
+        for(PendingRocketPickup pickup : rocketPickups.values()) {
+            if(pickup.getRocket().equals(rocket))
+                return true;
+        }
+        return false;
     }
     @Getter
     public class PendingRocketPlacement {

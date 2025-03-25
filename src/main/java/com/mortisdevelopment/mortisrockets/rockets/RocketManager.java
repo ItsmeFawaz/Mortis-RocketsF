@@ -175,7 +175,6 @@ public class RocketManager extends CoreManager {
     }
     //TODO :-
     // - Grace period after landing
-    // - ability to use wasd to maneuver rocket on landing(possible use a different entity than armor stand?
     // - https://github.com/TrollsterCooleg/Parachute/blob/master/src/main/java/me/cooleg/parachute/Events/PlayerMove.java
     // - configurable landing particle offset(Y Axis)
     private void landWithMovement(Rocket rocket, Player player, Location location, ArmorStand stand) {

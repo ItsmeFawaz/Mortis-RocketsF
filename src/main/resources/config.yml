@@ -13,14 +13,18 @@ messages:
   travel-usage: "&cUsage: /rocket travel <rocket-id>"
   already-traveling: "&cYou are already traveling"
   not-inside-rocket: "&cYou have to be inside a rocket to travel!"
+  rocket-place-not-top: "&cYou have to place the rocket on top of the block"
   confirmation: "&cThe cost for this travel is %cost%. Are you sure you want to travel?"
-  confirmation-accept: "&c[ACCEPT]"
-  confirmation-deny: "&c[DENY]"
   pickup-rocket: "&aPicking up the rocket, please stay still for 5 seconds"
   pickup-rocket-fail: "§c§lRocket placement cancelled!"
+  already-picking-up: "&cRocket is already being picked up by another player"
   pickup-rocket-success: "&aRocket picked up!"
   place-rocket: "&aPlacing down the rocket, please stay still for 5 seconds"
   place-rocket-fail: "§c§lRocket placement cancelled!"
+  fueling-rocket: "&cadding fuel to rocket, please wait"
+  added-fuel: "&aFuel added! Remaining fuel needed: %fuel%"
+  invalid-fuel: "that is not a valid fuel item"
+  fueling-complete: "fuel added! lifting off in 10 seconds..."
 
 settings:
   apply-texturepack: false
