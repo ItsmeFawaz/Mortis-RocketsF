@@ -88,10 +88,6 @@ public class RocketManager extends CoreManager {
             player.sendMessage(getMessage("ALREADY_TRAVELING"));
             return false;
         }
-        if (!rocket.hasCost(player)) {
-            player.sendMessage(getMessage("NOT_ENOUGH_MONEY"));
-            return false;
-        }
         return canLaunch(rocket, player);
     }
 
@@ -121,8 +117,6 @@ public class RocketManager extends CoreManager {
         if (!canLand(rocket, player, location)) {
             return false;
         }
-        if(!fromRocket)
-            rocket.removeCost(player);
         launch(rocket, player, location, fromRocket);
         return true;
     }
@@ -139,8 +133,6 @@ public class RocketManager extends CoreManager {
         if (!canLand(rocket, player, location)) {
             return false;
         }
-        if(!fromRocket)
-            rocket.removeCost(player);
         launch(rocket, player, location, fromRocket);
         return true;
     }

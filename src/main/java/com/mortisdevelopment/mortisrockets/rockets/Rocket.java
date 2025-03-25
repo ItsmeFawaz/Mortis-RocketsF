@@ -15,7 +15,6 @@ import java.util.Random;
 public class Rocket {
 
     private final MortisRockets plugin = MortisRockets.getInstance();
-    private final Economy economy = plugin.getEconomy();
     private final String id;
     private final RocketWorld world;
     private final RocketLocation location1;
@@ -78,13 +77,5 @@ public class Rocket {
             return !type.equals(Material.WATER) && !type.equals(Material.KELP) && !type.equals(Material.KELP_PLANT) && !type.equals(Material.SEAGRASS) && !type.equals(Material.TALL_SEAGRASS);
         }
         return true;
-    }
-
-    public boolean hasCost(Player player) {
-        return economy.has(player, cost);
-    }
-
-    public void removeCost(Player player) {
-        economy.withdrawPlayer(player, cost);
     }
 }
