@@ -25,6 +25,7 @@ messages:
   added-fuel: "&aFuel added! Remaining fuel needed: %fuel%"
   invalid-fuel: "that is not a valid fuel item"
   fueling-complete: "fuel added! lifting off in 10 seconds..."
+  already-fueling: "&cRocket is currently being fueled, please wait for it to finish for adding more fuel!"
 
 settings:
   apply-texturepack: false

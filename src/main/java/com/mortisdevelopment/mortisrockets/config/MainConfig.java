@@ -63,6 +63,7 @@ public class MainConfig extends Config {
                 section.getBoolean("launch.require-fuel"),
                 section.getBoolean("launch.insert-fuel-individually"),
                 landingDistance,
+                section.getBoolean("land.drop-rocket-on-landing"),
                 landingParticleOffset,
                 section.getInt("launch.inactivity-timer"),
                 section.getConfigurationSection("towny-integration"));

@@ -81,7 +81,6 @@ public class RocketCommand implements TabExecutor {
         if (args[0].equalsIgnoreCase("travel")) {
             //If Player is sitting inside a rocket, return
             if(!(player.getVehicle() != null && manager.getRocketManager().isRocket(player.getVehicle()))) {
-                sender.sendMessage("You have to be inside a rocket!");
                 sender.sendMessage(manager.getRocketManager().getMessage("NOT_INSIDE_ROCKET"));
                 return false;
             }
@@ -112,14 +111,20 @@ public class RocketCommand implements TabExecutor {
                     return false;
                 }
                 RocketLocation rocketLocation = new RocketLocation(x, z);
-                manager.getRocketManager().getFuelManager().startFueling(player, rocket, rocketLocation);
+                if(manager.getRocketManager().getSettings().isRequireFuel())
+                    manager.getRocketManager().getFuelManager().startFueling(player, rocket, rocketLocation);
+                else
+                    manager.getRocketManager().travel(rocket, player, rocketLocation, true); //TODO: Launch liftoff timer
                 /*if (args[args.length - 1].equalsIgnoreCase("confirm")) {
                     return manager.getRocketManager().travel(rocket, player, rocketLocation, true);
                 }else {
                     manager.getRocketManager().travel(player, rocket, getCommand(args));
                 }*/
             }else {
-                manager.getRocketManager().getFuelManager().startFueling(player, rocket);
+                if(manager.getRocketManager().getSettings().isRequireFuel())
+                    manager.getRocketManager().getFuelManager().startFueling(player, rocket);
+                else
+                    return manager.getRocketManager().travel(rocket, player, true); //TODO: Launch liftoff timer
                 /*if (args[args.length - 1].equalsIgnoreCase("confirm")) {
                     return manager.getRocketManager().travel(rocket, player, true);
                 }else {

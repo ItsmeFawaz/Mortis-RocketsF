@@ -16,6 +16,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
@@ -57,7 +58,10 @@ public class FuelManager implements Listener {
             return;
         if(!(event.getHand() == EquipmentSlot.HAND && isFuel(event.getPlayer(), event.getPlayer().getInventory().getItemInMainHand())))
             return;
-
+        if(fueling.containsKey(event.getPlayer().getUniqueId())) {
+            event.getPlayer().sendMessage(rocketManager.getMessage("ALREADY_FUELING"));
+            return;
+        }
         if(rocketManager.getSettings().isInsertFuelIndividually()) {
 
             ItemStack item = event.getPlayer().getInventory().getItemInMainHand();
@@ -85,13 +89,21 @@ public class FuelManager implements Listener {
         }
 
     }
-    //TODO: Handle dismount, disconnects, crashes, deaths etc
+    //TODO: Handle dismount, disconnects, crashes, deaths etc, testing pending
     @EventHandler
     public void onDismount(EntityDismountEvent event) {
-        if (event.getEntity() instanceof Player player && fuelingPlayers.containsKey(player.getUniqueId())) {
-            FuelProgress progress = fuelingPlayers.remove(player.getUniqueId());
-            progress.getUsedFuel().forEach(fuel -> player.getInventory().addItem(fuel));
-        }
+        if (event.getEntity() instanceof Player player && fuelingPlayers.containsKey(player.getUniqueId()))
+            cancelFueling(player);
+    }
+    @EventHandler
+    public void onDeath(PlayerDeathEvent event) {
+        if(fuelingPlayers.containsKey(event.getEntity().getUniqueId()))
+            cancelFueling(event.getEntity());
+    }
+    @EventHandler
+    public void onDisconnect(PlayerDeathEvent event) {
+        if(fuelingPlayers.containsKey(event.getPlayer().getUniqueId()))
+            cancelFueling(event.getPlayer());
     }
     private void startFuelingTimer(Player player, ItemStack stack) {
         player.sendMessage(rocketManager.getMessage("FUELING_ROCKET"));
@@ -99,7 +111,7 @@ public class FuelManager implements Listener {
         BukkitTask fuelingTask = new BukkitRunnable() {
             @Override
             public void run() {
-                player.sendActionBar(LegacyComponentSerializer.legacyAmpersand().deserialize("&7" + getCounterMessage(counter[0])));
+                player.sendActionBar(LegacyComponentSerializer.legacyAmpersand().deserialize("&7&l" + getCounterMessage(counter[0])));
                 counter[0]++;
                 if (counter[0] > rocketManager.getSettings().getFuelTime()) {
                     FuelProgress fuelProgress = fuelingPlayers.get(player.getUniqueId());
@@ -111,10 +123,13 @@ public class FuelManager implements Listener {
                     //TODO: Add launch-off timer!
                     if (fuelProgress.getRemainingCost() <= 0) {
                         player.sendMessage(rocketManager.getMessage("FUELING_COMPLETE"));
-                        if (fuelProgress.getRocketLocation() != null)
-                            rocketManager.travel(fuelProgress.getRocket(), player, fuelProgress.getRocketLocation(), true);
-                        else
-                            rocketManager.travel(fuelProgress.getRocket(), player, true);
+                        if (fuelProgress.getRocketLocation() != null) {
+                            if(!rocketManager.travel(fuelProgress.getRocket(), player, fuelProgress.getRocketLocation(), true))
+                                cancelFueling(player);
+                        } else {
+                            if(!rocketManager.travel(fuelProgress.getRocket(), player, true))
+                                cancelFueling(player);
+                        }
                         fuelingPlayers.remove(player.getUniqueId());
                     } else {
                         player.sendMessage(rocketManager.getMessage("ADDED_FUEL").replaceText(TextReplacementConfig.builder().match("%fuel%").replacement(formatter.format(fuelProgress.getRemainingCost())).build()));
@@ -127,6 +142,17 @@ public class FuelManager implements Listener {
         fueling.put(player.getUniqueId(), new Fuel(stack, fuelingTask));
     }
     private void cancelFueling(Player player) {
+        if(fueling.containsKey(player.getUniqueId())) {
+            Fuel fuel = fueling.get(player.getUniqueId());
+            fuel.getTask().cancel();
+            player.getInventory().addItem(fuel.getStack());
+            fueling.remove(player.getUniqueId());
+        }
+        if(fuelingPlayers.containsKey(player.getUniqueId())) {
+            FuelProgress fuelProgress = fuelingPlayers.get(player.getUniqueId());
+            fuelProgress.getUsedFuel().forEach(fuel -> player.getInventory().addItem(fuel));
+            fuelingPlayers.remove(player.getUniqueId());
+        }
     }
     private String getCounterMessage(int count) {
         String message = "";
@@ -149,6 +175,7 @@ public class FuelManager implements Listener {
         });
     }
     @AllArgsConstructor
+    @Getter
     public class Fuel {
         private final ItemStack stack;
         private final BukkitTask task;

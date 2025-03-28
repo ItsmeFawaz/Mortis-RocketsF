@@ -38,10 +38,15 @@ public class RocketListener implements Listener {
             Iterator<Map.Entry<ArmorStand, Long>> rocketsIterator = rocketManager.getPlacedRockets().entrySet().iterator();
             while (rocketsIterator.hasNext()) {
                 Map.Entry<ArmorStand, Long> entry = rocketsIterator.next();
-                if (entry.getValue() != -1 && entry.getValue() < currentTime) {
-                    entry.getKey().getLocation().getWorld().dropItem(entry.getKey().getLocation(), rocketManager.getSettings().getInventoryItem());
+                if(entry.getKey().isDead()) {
                     rocketsIterator.remove();
                     entry.getKey().remove();
+                    continue;
+                    
+                }
+                if (entry.getValue() != -1 && entry.getValue() < currentTime) {
+                    entry.getKey().getLocation().getWorld().dropItem(entry.getKey().getLocation(), rocketManager.getSettings().getInventoryItem());
+
                 }
             }
             Iterator<Map.Entry<Player, PendingRocketPlacement>> rocketLocationsIterator = rocketPlacements.entrySet().iterator();
@@ -49,7 +54,6 @@ public class RocketListener implements Listener {
                 Map.Entry<Player, PendingRocketPlacement> entry = rocketLocationsIterator.next();
                 if (entry.getValue().getTime() < currentTime) {
                     ArmorStand rocket = rocketManager.spawnRocket(entry.getValue().getLocation(), true);
-                    rocketManager.getPlacedRockets().put(rocket, currentTime + (rocketManager.getSettings().getInactivityTime()*1000L));
                     rocketLocationsIterator.remove();
                 }
             }
@@ -83,12 +87,10 @@ public class RocketListener implements Listener {
     @EventHandler
     public void onDismount(EntityDismountEvent e) {
 
-        if (!(e.getEntity() instanceof Player)) {
+        if (!(e.getEntity() instanceof Player player)) {
             return;
         }
-        Player player = (Player) e.getEntity();
-        ArmorStand rocket;
-        if(e.getDismounted() instanceof ArmorStand && rocketManager.getPlacedRockets().containsKey((rocket = (ArmorStand) e.getDismounted()))) {
+        if(e.getDismounted() instanceof ArmorStand rocket && rocketManager.getPlacedRockets().containsKey(rocket) && rocketManager.getPlacedRockets().get(rocket) == -1) {
             rocketManager.getPlacedRockets().put(rocket, System.currentTimeMillis() + (rocketManager.getSettings().getInactivityTime()*1000L));
             return;
         }
@@ -146,9 +148,7 @@ public class RocketListener implements Listener {
             event.getPlayer().sendMessage(rocketManager.getMessage("PICKUP_ROCKET_FAIL"));
             event.getPlayer().getInventory().addItem(rocketManager.getSettings().getInventoryItem());
         }
-        if(rocketPickups.containsKey(event.getPlayer())) {
-
-        }
+        rocketPickups.remove(event.getPlayer());
     }
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
@@ -175,9 +175,7 @@ public class RocketListener implements Listener {
         //TODO: - Check placement location, if blocks above
         rocketPlacements.put(player, new PendingRocketPlacement(event.getClickedBlock().getLocation().add(0.5, 1, 0.5)));
         player.sendMessage(rocketManager.getMessage("PLACE_ROCKET"));
-        //TODO:- Rocket placement 5 second delay message, do not move
     }
-    /*TODO:-anyone can sit in it, anyone can break it unless its occupied*/
     @EventHandler
     public void onInteractAt(PlayerInteractAtEntityEvent event) {
         //If the player is not right clicking an Armor Stand, return

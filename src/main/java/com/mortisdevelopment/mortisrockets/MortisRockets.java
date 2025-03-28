@@ -2,8 +2,6 @@ package com.mortisdevelopment.mortisrockets;
 
 import com.mortisdevelopment.mortisrockets.managers.Manager;
 import lombok.Getter;
-import net.milkbowl.vault.economy.Economy;
-import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class MortisRockets extends JavaPlugin {
