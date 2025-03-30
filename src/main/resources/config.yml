@@ -26,6 +26,7 @@ messages:
   invalid-fuel: "that is not a valid fuel item"
   fueling-complete: "fuel added! lifting off in 10 seconds..."
   already-fueling: "&cRocket is currently being fueled, please wait for it to finish for adding more fuel!"
+  launch-off-timer-message: "&cLiftoff in %time% seconds"
 
 settings:
   apply-texturepack: false
@@ -70,7 +71,7 @@ settings:
     distance: 50
     #allows players to slightly adjust the rocket's position during landing using wasd, similar to the hellpods in helldivers 2 or drop pods in planetside 2
     allow-movement: false
-    movement speed: 0.8
+    movement-speed: 0.8
     #drops the rocket item on landing, in case you want rockets to be reusable
     drop-rocket-on-landing: true
     #time in seconds that a player remains in the rocket once landed before being dismounted, prevents players from landing right on top of enemies and immediately being able to attack them

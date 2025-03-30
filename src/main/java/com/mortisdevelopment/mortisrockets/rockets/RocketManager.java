@@ -20,6 +20,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
 import java.text.DecimalFormat;
@@ -34,6 +35,7 @@ public class RocketManager extends CoreManager {
     private final RocketSettings settings;
     private final Map<String, Rocket> rocketById;
     private final HashMap<ArmorStand, Long> placedRockets;
+    private final HashMap<UUID, BukkitTask> launchTasks;
     private final Set<UUID> traveling;
     private final HashMap<UUID, Vector> landing; //TODO: Possibly redundant, remove if not used(Possibly also use it for Allow Movement)
     private final TownyAPI townyAPI = TownyAPI.getInstance();
@@ -45,13 +47,12 @@ public class RocketManager extends CoreManager {
         this.landing = new HashMap<>();
         placedRockets = new HashMap<>();
         fuelManager = new FuelManager(this);
+        launchTasks = new HashMap<>();
         plugin.getServer().getPluginManager().registerEvents(new RocketListener(this), plugin);
         plugin.getServer().getPluginManager().registerEvents(fuelManager, plugin);
     }
 
     public boolean canLand(Rocket rocket, Player player, Location location) {
-        //TODO:-
-        // - Specific rules of friend/enemy towns
 
         //If Towny is enabled
         if (!settings.getTownySettings().isUseTowny())
@@ -63,8 +64,7 @@ public class RocketManager extends CoreManager {
 
     }
 
-    public boolean canLaunch(Rocket rocket, Player player) {
-        Location location = player.getLocation();
+    public boolean canLaunch(Player player, Location location) {
         World world = location.getWorld();
         if (world.getHighestBlockAt(location).getLocation().getBlockY() > location.getBlockY()) {
             player.sendMessage(getMessage("NO_SPACE"));
@@ -89,7 +89,7 @@ public class RocketManager extends CoreManager {
             player.sendMessage(getMessage("ALREADY_TRAVELING"));
             return false;
         }
-        return canLaunch(rocket, player);
+        return canLaunch(player, player.getLocation());
     }
 
     public void travel(Player player, Rocket rocket, String command) {
@@ -168,7 +168,6 @@ public class RocketManager extends CoreManager {
     }
     //TODO :-
     // - Grace period after landing
-    // - Make the landing graceful to prevent damage.
     private void landWithMovement(Rocket rocket, Player player, Location location, ArmorStand stand) {
         Location loc = new Location(location.getWorld(), location.getX(), location.getY() + settings.getLandingDistance(), location.getZ());
         stand.remove();
@@ -176,12 +175,13 @@ public class RocketManager extends CoreManager {
         stand.getEquipment().setHelmet(settings.getLandItem());
         player.teleport(loc);
         ArmorStand landingStand = spawnRocket(loc, false);
-        landing.put(player.getUniqueId(), player.getLocation().toVector());
         player.addPassenger(landingStand);
+        landing.put(player.getUniqueId(), player.getLocation().toVector());
         new BukkitRunnable() {
             @Override
             public void run() {
                 //player.addPassenger(landingStand);
+
                 stopDropSpeed(player);
                 player.getWorld().playSound(player.getLocation(), Sound.BLOCK_LAVA_EXTINGUISH, 1, 1);
                 player.setGravity(false);
@@ -247,6 +247,24 @@ public class RocketManager extends CoreManager {
                 }.runTaskLater(plugin, 20L);
             }
         }.runTaskTimer(plugin, 20L, 40L);
+    }
+    public void launchOff(Player player, Rocket rocket, RocketLocation rocketLocation) {
+
+        BukkitTask launchTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (rocketLocation != null) {
+                    if(!travel(rocket, player, rocketLocation, true))
+                        fuelManager.cancelFueling(player);
+                } else {
+                    if(!travel(rocket, player, true))
+                        fuelManager.cancelFueling(player);
+                }
+                fuelManager.getFuelingPlayers().remove(player.getUniqueId());
+                cancel();
+            }
+        }.runTaskLater(plugin,  settings.getLaunchLiftoffTime()*20L);
+        launchTasks.put(player.getUniqueId(), launchTask);
     }
     public ArmorStand spawnRocket(Location location, boolean isLaunch) {
         ArmorStand stand = location.getWorld().spawn(location, ArmorStand.class);

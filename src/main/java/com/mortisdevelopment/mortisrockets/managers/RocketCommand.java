@@ -114,7 +114,7 @@ public class RocketCommand implements TabExecutor {
                 if(manager.getRocketManager().getSettings().isRequireFuel())
                     manager.getRocketManager().getFuelManager().startFueling(player, rocket, rocketLocation);
                 else
-                    manager.getRocketManager().travel(rocket, player, rocketLocation, true); //TODO: Launch liftoff timer
+                    manager.getRocketManager().launchOff(player, rocket, rocketLocation);
                 /*if (args[args.length - 1].equalsIgnoreCase("confirm")) {
                     return manager.getRocketManager().travel(rocket, player, rocketLocation, true);
                 }else {
@@ -124,7 +124,7 @@ public class RocketCommand implements TabExecutor {
                 if(manager.getRocketManager().getSettings().isRequireFuel())
                     manager.getRocketManager().getFuelManager().startFueling(player, rocket);
                 else
-                    return manager.getRocketManager().travel(rocket, player, true); //TODO: Launch liftoff timer
+                    manager.getRocketManager().launchOff(player, rocket, null);
                 /*if (args[args.length - 1].equalsIgnoreCase("confirm")) {
                     return manager.getRocketManager().travel(rocket, player, true);
                 }else {

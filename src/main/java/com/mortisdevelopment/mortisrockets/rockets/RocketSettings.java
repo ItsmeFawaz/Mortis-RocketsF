@@ -18,22 +18,22 @@ public class RocketSettings {
     private final int pickupTime;
     private final int fuelTime;
     private final int launchingTime;
-    private final int launchLiftoffTime; //TODO: Set up a timer with countdown after fueling to launch, use this time for timer
+    private final int launchLiftoffTime;
     private final int launchingSpeed;
     private final boolean launchInvincibility; // TODO: Make player invulnerable and unable to leave the rocket once launch liftoff has started, Make exceptions for when the player dies if its turned off
     private final boolean requireFuel;
     private final boolean insertFuelIndividually;
     private final int landingDistance;
-    /*private final boolean landingAllowMovement; //TODO: use PlayerMove event to check if player is moving, if so, cancel sideways movement
-    private final double landingMoveSpeed;*/ //TODO: use this value to set movement speed
-    private final boolean dropRocketOnLand; //TODO: Drop the rocket as an item on land or set it as an entity like when placing
+    private final boolean landingAllowMovement; //TODO: use PlayerMove event to check if player is moving, if so, cancel sideways movement
+    private final double landingMoveSpeed; //TODO: use this value to set movement speed
+    private final boolean dropRocketOnLand;
     /*private final int landingDismountTime; //TODO: Grace period before player can dismount, check config options for grace period
     private final boolean protectWhileDismount;*/ //TODO:  invulnerability while dismount time
     private final double landingParticleOffset;
     private final int inactivityTime;
     private final TownySettings townySettings;
 
-    public RocketSettings(String url, ItemStack launchItem, ItemStack landItem, ItemStack inventoryItem, int placeTime, int pickupTime, int fuelTime, int launchingTime, int launchLiftoffTime,  int launchingSpeed, boolean launchInvincibility, boolean requireFuel, boolean insertFuelIndividually, int landingDistance, boolean dropRocketOnLand, double landingParticleOffset, int inactivityTime, ConfigurationSection townySettingsSection) {
+    public RocketSettings(String url, ItemStack launchItem, ItemStack landItem, ItemStack inventoryItem, int placeTime, int pickupTime, int fuelTime, int launchingTime, int launchLiftoffTime,  int launchingSpeed, boolean launchInvincibility, boolean requireFuel, boolean insertFuelIndividually, int landingDistance, boolean landingAllowMovement, double landingMoveSpeed, boolean dropRocketOnLand, double landingParticleOffset, int inactivityTime, ConfigurationSection townySettingsSection) {
         this.url = url;
         this.launchItem = launchItem;
         this.landItem = landItem;
@@ -48,6 +48,8 @@ public class RocketSettings {
         this.requireFuel = requireFuel;
         this.insertFuelIndividually = insertFuelIndividually;
         this.landingDistance = landingDistance;
+        this.landingAllowMovement = landingAllowMovement;
+        this.landingMoveSpeed = landingMoveSpeed;
         this.dropRocketOnLand = dropRocketOnLand;
         this.landingParticleOffset = landingParticleOffset;
         this.inactivityTime = inactivityTime;

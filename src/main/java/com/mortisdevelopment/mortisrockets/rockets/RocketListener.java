@@ -14,6 +14,7 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.Vector;
 import org.spigotmc.event.entity.EntityDismountEvent;
 import org.spigotmc.event.entity.EntityMountEvent;
 
@@ -128,6 +129,10 @@ public class RocketListener implements Listener {
         if (!(e.getEntity() instanceof Player player)) {
             return;
         }
+        if(rocketManager.getSettings().isLaunchInvincibility() && rocketManager.getLaunchTasks().containsKey(player.getUniqueId())) {
+            e.setCancelled(true);
+            return;
+        }
         if (!rocketManager.getTraveling().contains(player.getUniqueId())) {
             return;
         }
@@ -135,20 +140,31 @@ public class RocketListener implements Listener {
     }
     @EventHandler
     public void onMove(PlayerMoveEvent event) {
-        /*if(rocketManager.getLanding().containsKey(event.getPlayer().getUniqueId())) {
-            final Vector vector = event.getPlayer().getLocation().toVector().subtract(rocketManager.getLanding().get(event.getPlayer().getUniqueId())).multiply(.8 * 1.1F);
-            event.getPlayer().setVelocity(vector*//*.setY(-.2)*//*);
-        }*/
-        /*if(event.getFrom().getX() == event.getTo().getX() || event.getFrom().getZ() == event.getTo().getZ())
-            return;*/
+        if(rocketManager.getLanding().containsKey(event.getPlayer().getUniqueId())) {
+            Vector vector = event.getPlayer().getLocation().toVector()/*.subtract(rocketManager.getLanding().get(event.getPlayer().getUniqueId())).multiply(0.8*1.1)*/;
+            if(rocketManager.getSettings().isLandingAllowMovement()) {
+                /*vector.multiply(0.8 * rocketManager.getSettings().getLandingMoveSpeed());
+                //TODO: Implement method from parachute plugin for configurable movespeed*/
+            } else {
+                //No movement allowed
+                vector.setX(0);
+                vector.setZ(0);
+            }
+            //final Vector vector = event.getPlayer().getLocation().toVector().subtract(rocketManager.getLanding().get(event.getPlayer().getUniqueId())).multiply(.8 * 1.1F);
+            event.getPlayer().setVelocity(vector);
+            //rocketManager.getLanding().put(event.getPlayer().getUniqueId(), event.getPlayer().getLocation().toVector());
+            return;
+        }
         if(!event.hasChangedBlock())
             return;
         if(rocketPlacements.containsKey(event.getPlayer())) {
             rocketPlacements.remove(event.getPlayer());
-            event.getPlayer().sendMessage(rocketManager.getMessage("PICKUP_ROCKET_FAIL"));
+            event.getPlayer().sendMessage(rocketManager.getMessage("PLACE_ROCKET_FAIL"));
             event.getPlayer().getInventory().addItem(rocketManager.getSettings().getInventoryItem());
         }
-        rocketPickups.remove(event.getPlayer());
+        if(rocketPickups.remove(event.getPlayer()) != null) {
+            event.getPlayer().sendMessage(rocketManager.getMessage("PICKUP_ROCKET_FAIL"));
+        }
     }
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
@@ -172,8 +188,10 @@ public class RocketListener implements Listener {
         } else {
             return;
         }
-        //TODO: - Check placement location, if blocks above
-        rocketPlacements.put(player, new PendingRocketPlacement(event.getClickedBlock().getLocation().add(0.5, 1, 0.5)));
+        Location placementLocation = event.getClickedBlock().getLocation().add(0.5, 1, 0.5);
+        if(!rocketManager.canLaunch(player, placementLocation))
+            return;
+        rocketPlacements.put(player, new PendingRocketPlacement(placementLocation));
         player.sendMessage(rocketManager.getMessage("PLACE_ROCKET"));
     }
     @EventHandler
@@ -209,7 +227,6 @@ public class RocketListener implements Listener {
     }
     @Getter
     public class PendingRocketPickup {
-        //TODO: FIX MOVEMENT PREVENTING PICKUP
         private final ArmorStand rocket;
         private final long time;
 

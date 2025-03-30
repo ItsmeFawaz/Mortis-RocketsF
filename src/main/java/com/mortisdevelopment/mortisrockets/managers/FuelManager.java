@@ -32,6 +32,7 @@ public class FuelManager implements Listener {
     private final RocketManager rocketManager;
     private final DecimalFormat formatter = new DecimalFormat("#,###");
     private HashMap<Material, Integer> fuelMap = new HashMap<>();
+    @Getter
     private HashMap<UUID, FuelProgress> fuelingPlayers;
     private HashMap<UUID, Fuel> fueling;
 
@@ -120,17 +121,9 @@ public class FuelManager implements Listener {
                     fuelProgress.getUsedFuel().add(stack);
                     fuelProgress.setRemainingCost(fuelProgress.getRemainingCost() - fuelAmount);
 
-                    //TODO: Add launch-off timer!
                     if (fuelProgress.getRemainingCost() <= 0) {
                         player.sendMessage(rocketManager.getMessage("FUELING_COMPLETE"));
-                        if (fuelProgress.getRocketLocation() != null) {
-                            if(!rocketManager.travel(fuelProgress.getRocket(), player, fuelProgress.getRocketLocation(), true))
-                                cancelFueling(player);
-                        } else {
-                            if(!rocketManager.travel(fuelProgress.getRocket(), player, true))
-                                cancelFueling(player);
-                        }
-                        fuelingPlayers.remove(player.getUniqueId());
+                        rocketManager.launchOff(player, fuelProgress.getRocket(), fuelProgress.getRocketLocation());
                     } else {
                         player.sendMessage(rocketManager.getMessage("ADDED_FUEL").replaceText(TextReplacementConfig.builder().match("%fuel%").replacement(formatter.format(fuelProgress.getRemainingCost())).build()));
                     }
@@ -138,10 +131,10 @@ public class FuelManager implements Listener {
                     cancel();
                 }
             }
-        }.runTaskTimer(plugin, 0, 20);
+        }.runTaskTimer(plugin, 0, 20L);
         fueling.put(player.getUniqueId(), new Fuel(stack, fuelingTask));
     }
-    private void cancelFueling(Player player) {
+    public void cancelFueling(Player player) {
         if(fueling.containsKey(player.getUniqueId())) {
             Fuel fuel = fueling.get(player.getUniqueId());
             fuel.getTask().cancel();
@@ -169,6 +162,7 @@ public class FuelManager implements Listener {
             return false;
         }
     }
+
     public void loadFuelItems(ConfigurationSection section) {
         section.getValues(false).forEach((key, value) -> {;
             fuelMap.put(Material.matchMaterial( key.toUpperCase()), (Integer) value);
