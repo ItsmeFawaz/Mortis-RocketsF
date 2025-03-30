@@ -8,6 +8,7 @@ import com.palmergames.bukkit.towny.object.Nation;
 import com.palmergames.bukkit.towny.object.Resident;
 import com.palmergames.bukkit.towny.object.Town;
 import lombok.Getter;
+import lombok.Setter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextReplacementConfig;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -16,7 +17,6 @@ import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.EquipmentSlot;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -37,7 +37,7 @@ public class RocketManager extends CoreManager {
     private final HashMap<ArmorStand, Long> placedRockets;
     private final HashMap<UUID, BukkitTask> launchTasks;
     private final Set<UUID> traveling;
-    private final HashMap<UUID, Vector> landing; //TODO: Possibly redundant, remove if not used(Possibly also use it for Allow Movement)
+    private final HashMap<UUID, LandingInfo> landing; //TODO: Possibly redundant, remove if not used(Possibly also use it for Allow Movement)
     private final TownyAPI townyAPI = TownyAPI.getInstance();
 
     public RocketManager(RocketSettings settings) {
@@ -176,8 +176,10 @@ public class RocketManager extends CoreManager {
         player.teleport(loc);
         ArmorStand landingStand = spawnRocket(loc, false);
         player.addPassenger(landingStand);
-        landing.put(player.getUniqueId(), player.getLocation().toVector());
-        new BukkitRunnable() {
+        LandingInfo landingInfo = new LandingInfo(rocket, player, landingStand, player.getLocation().toVector(), location);
+        landing.put(player.getUniqueId(), landingInfo);
+        landingInfo.startSuicideBurn();
+        /*new BukkitRunnable() {
             @Override
             public void run() {
                 //player.addPassenger(landingStand);
@@ -191,7 +193,7 @@ public class RocketManager extends CoreManager {
                     cancel();
                     return;
                 }
-                /*if (player.isDead() || player.isOnGround() || player.isInLava() || player.isInPowderedSnow() || player.isInWaterOrBubbleColumn() || player.getPassengers().isEmpty()) {
+                *//*if (player.isDead() || player.isOnGround() || player.isInLava() || player.isInPowderedSnow() || player.isInWaterOrBubbleColumn() || player.getPassengers().isEmpty()) {
                     traveling.remove(player.getUniqueId());
                     landing.remove(player.getUniqueId());
                     player.sendMessage(rocket.getLandingMessage());
@@ -200,7 +202,7 @@ public class RocketManager extends CoreManager {
                     landingStand.remove();
                     cancel();
                     return;
-                }*/
+                }*//*
                 new BukkitRunnable() {
                     @Override
                     public void run() {
@@ -212,7 +214,7 @@ public class RocketManager extends CoreManager {
                     }
                 }.runTaskLater(plugin, 20L);
             }
-        }.runTaskTimer(plugin, 20L, 40L);
+        }.runTaskTimer(plugin, 20L, 40L);*/
     }
     @Deprecated
     private void land(Rocket rocket, Player player, Location location, ArmorStand stand) {
@@ -268,7 +270,7 @@ public class RocketManager extends CoreManager {
     }
     public ArmorStand spawnRocket(Location location, boolean isLaunch) {
         ArmorStand stand = location.getWorld().spawn(location, ArmorStand.class);
-        stand.getEquipment().setHelmet(isLaunch ? settings.getLaunchItem() : settings.getLandItem(), true);
+        stand.getEquipment().setBoots(isLaunch ? settings.getLaunchItem() : settings.getLandItem(), true);
         stand.addDisabledSlots(EquipmentSlot.HEAD);
         stand.setCanPickupItems(false);
         stand.setSilent(true);
@@ -400,6 +402,32 @@ public class RocketManager extends CoreManager {
                     return true;
             }
             return false;
+        }
+    }
+    @Getter
+    public class LandingInfo {
+        private final Rocket rocket;
+        private final Player player;
+        private final ArmorStand landingStand;
+        @Setter
+        private Vector pastPoint;
+        private BukkitTask landingTask;
+        private Location landingLocation;
+
+        public LandingInfo(Rocket rocket, Player player, ArmorStand landingStand, Vector pastPoint, Location landingLocation) {
+            this.rocket = rocket;
+            this.player = player;
+            this.landingStand = landingStand;
+            this.pastPoint = pastPoint;
+            this.landingLocation = landingLocation;
+        }
+        public void startSuicideBurn() {
+            landingTask = new BukkitRunnable() {
+                @Override
+                public void run() {
+                    landingStand.getWorld().spawnParticle(Particle.LAVA, landingStand.getLocation().add(0, settings.getLandingParticleOffset(), 0), 50);
+                }
+            }.runTaskTimer(plugin, 0L, 20L);
         }
     }
 }

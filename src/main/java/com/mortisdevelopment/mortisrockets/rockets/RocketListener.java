@@ -13,6 +13,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 import org.spigotmc.event.entity.EntityDismountEvent;
@@ -47,6 +48,8 @@ public class RocketListener implements Listener {
                 }
                 if (entry.getValue() != -1 && entry.getValue() < currentTime) {
                     entry.getKey().getLocation().getWorld().dropItem(entry.getKey().getLocation(), rocketManager.getSettings().getInventoryItem());
+                    rocketsIterator.remove();
+                    entry.getKey().remove();
 
                 }
             }
@@ -141,19 +144,7 @@ public class RocketListener implements Listener {
     @EventHandler
     public void onMove(PlayerMoveEvent event) {
         if(rocketManager.getLanding().containsKey(event.getPlayer().getUniqueId())) {
-            Vector vector = event.getPlayer().getLocation().toVector()/*.subtract(rocketManager.getLanding().get(event.getPlayer().getUniqueId())).multiply(0.8*1.1)*/;
-            if(rocketManager.getSettings().isLandingAllowMovement()) {
-                /*vector.multiply(0.8 * rocketManager.getSettings().getLandingMoveSpeed());
-                //TODO: Implement method from parachute plugin for configurable movespeed*/
-            } else {
-                //No movement allowed
-                vector.setX(0);
-                vector.setZ(0);
-            }
-            //final Vector vector = event.getPlayer().getLocation().toVector().subtract(rocketManager.getLanding().get(event.getPlayer().getUniqueId())).multiply(.8 * 1.1F);
-            event.getPlayer().setVelocity(vector);
-            //rocketManager.getLanding().put(event.getPlayer().getUniqueId(), event.getPlayer().getLocation().toVector());
-            return;
+            performLandingMechanics(event.getPlayer(), rocketManager.getLanding().get(event.getPlayer().getUniqueId()));
         }
         if(!event.hasChangedBlock())
             return;
@@ -233,6 +224,34 @@ public class RocketListener implements Listener {
         public PendingRocketPickup(ArmorStand rocket) {
             this.rocket = rocket;
             this.time = System.currentTimeMillis() + (rocketManager.getSettings().getPickupTime()* 1000L);
+        }
+
+    }
+    private void performLandingMechanics(Player player, RocketManager.LandingInfo landingInfo) {
+        RocketSettings settings = rocketManager.getSettings();
+        if (player.isDead() || player.isOnGround() || player.isInLava() || player.isInPowderedSnow() || player.isInWaterOrBubbleColumn() || player.getPassengers().isEmpty()) {
+            player.sendMessage(landingInfo.getRocket().getLandingMessage());
+            rocketManager.getTraveling().remove(player.getUniqueId());
+            rocketManager.getLanding().remove(player.getUniqueId());
+            player.eject();
+            player.setFallDistance(0);
+            landingInfo.getLandingStand().remove();
+            landingInfo.getLandingTask().cancel();
+            if(settings.isDropRocketOnLand())
+                player.getLocation().getWorld().dropItem(player.getLocation(), settings.getInventoryItem());
+        } else {
+            if((player.getLocation().getY() - landingInfo.getLandingLocation().getY()) > 20) {
+                if(!settings.isLandingAllowMovement()) {
+                    player.setVelocity(new Vector(0, player.getVelocity().getY(), 0));
+                }
+            } else {
+                final Vector vector = player.getLocation().toVector().subtract(landingInfo.getPastPoint()).multiply(.8 * (rocketManager.getSettings().isLandingAllowMovement() ? rocketManager.getSettings().getLandingMoveSpeed() : 0));
+                player.setVelocity(vector.setY(-.3));
+                landingInfo.setPastPoint(player.getLocation().toVector());
+            }
+
+            /*;*/
+
         }
 
     }
