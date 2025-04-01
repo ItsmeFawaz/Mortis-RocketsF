@@ -67,8 +67,8 @@ public class FuelManager implements Listener {
 
             ItemStack item = event.getPlayer().getInventory().getItemInMainHand();
             //If amount of fuel in hand is more than required
-            item.setAmount(item.getAmount() - 1);
             ItemStack usedFuel = item.clone();
+            item.setAmount(item.getAmount() - 1);
             usedFuel.setAmount(1);
             startFuelingTimer(event.getPlayer(), usedFuel);
         } else {

@@ -1,5 +1,13 @@
 package com.mortisdevelopment.mortisrockets.rockets;
 
+import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.ProtocolManager;
+import com.comphenix.protocol.events.ListenerPriority;
+import com.comphenix.protocol.events.PacketAdapter;
+import com.comphenix.protocol.events.PacketContainer;
+import com.comphenix.protocol.events.PacketEvent;
+import com.mortisdevelopment.mortisrockets.MortisRockets;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -29,11 +37,59 @@ public class RocketListener implements Listener {
     private final HashMap<Player, PendingRocketPlacement> rocketPlacements;
     private final HashMap<Player, PendingRocketPickup> rocketPickups;
     private final BukkitTask timeScheduler;
+    private final ProtocolManager manager = ProtocolLibrary.getProtocolManager();
 
     public RocketListener(RocketManager rocketManager) {
         this.rocketManager = rocketManager;
         rocketPlacements = new HashMap<>();
         rocketPickups = new HashMap<>();
+
+        manager.addPacketListener(new PacketAdapter(MortisRockets.getInstance(), ListenerPriority.NORMAL, PacketType.Play.Client.STEER_VEHICLE) {
+            @Override
+            public void onPacketReceiving(PacketEvent event) {
+                if (!(rocketManager.getLanding().containsKey(event.getPlayer().getUniqueId()))) {
+                    return;
+                }
+                Player player = event.getPlayer();
+                PacketContainer packet = event.getPacket();
+                float sideways = packet.getFloat().read(0);
+                float forward = packet.getFloat().read(1);
+                float multiplier = 0.1f; // Adjust this value as needed
+
+                // Apply the multiplier to the sideways and forward values
+                sideways *= multiplier;
+                forward *= multiplier;
+                // Get the player's direction vector
+                Vector direction = player.getLocation().getDirection();
+                // Calculate the sideways movement vector
+                Vector sidewaysVector = new Vector(direction.getZ(), 0, direction.getX()).normalize().multiply(sideways);
+
+                // Calculate the forward movement vector
+                Vector forwardVector = direction.clone().setY(0).normalize().multiply(forward);
+
+                // Combine the vectors to get the final velocity
+                Vector velocity = forwardVector.add(sidewaysVector);
+
+                // Set the velocity of the ArmorStand
+                ArmorStand armorStand = rocketManager.getLanding().get(player.getUniqueId()).getLandingStand(); // Replace with your method to get the ArmorStand
+                if (armorStand != null) {
+                    Vector currentVelocity = armorStand.getVelocity();
+                    //Bukkit.broadcastMessage("X: " + currentVelocity.getX() + " Y: " + currentVelocity.getY() + " Z: " + currentVelocity.getZ());
+                    if(currentVelocity.getX() > 0.5F) {
+                        currentVelocity.setX(0.5F);
+                    }
+                    if(currentVelocity.getZ() > 0.5F) {
+                        currentVelocity.setZ(0.5F);
+                    }
+                    if(currentVelocity.getX() < -0.5F)
+                        currentVelocity.setX(-0.5F);
+                    if(currentVelocity.getZ() < -0.5F)
+                        currentVelocity.setZ(-0.5F);
+                    // Set the new velocity while keeping the Y component unchanged
+                    armorStand.setVelocity(currentVelocity.add(velocity));
+                }
+            }
+        });
         timeScheduler = Bukkit.getScheduler().runTaskTimer(rocketManager.getPlugin(), () -> {
             //TODO: - Take the grace period time from config
             long currentTime = System.currentTimeMillis();

@@ -161,7 +161,8 @@ public class RocketManager extends CoreManager {
                     stand.setVelocity(stand.getVelocity().setY(stand.getVelocity().getY() + settings.getLaunchingSpeed()));
                     return;
                 }
-                landWithMovement(rocket, player, location, stand);
+                land(rocket, player, location, stand);
+                //landWithMovement(rocket, player, location, stand);
                 cancel();
             }
         }.runTaskTimer(plugin, 0L, 20L);
@@ -178,8 +179,8 @@ public class RocketManager extends CoreManager {
         player.addPassenger(landingStand);
         LandingInfo landingInfo = new LandingInfo(rocket, player, landingStand, player.getLocation().toVector(), location);
         landing.put(player.getUniqueId(), landingInfo);
-        landingInfo.startSuicideBurn();
-        /*new BukkitRunnable() {
+        //landingInfo.startSuicideBurn();
+        new BukkitRunnable() {
             @Override
             public void run() {
                 //player.addPassenger(landingStand);
@@ -193,7 +194,7 @@ public class RocketManager extends CoreManager {
                     cancel();
                     return;
                 }
-                *//*if (player.isDead() || player.isOnGround() || player.isInLava() || player.isInPowderedSnow() || player.isInWaterOrBubbleColumn() || player.getPassengers().isEmpty()) {
+                /*if (player.isDead() || player.isOnGround() || player.isInLava() || player.isInPowderedSnow() || player.isInWaterOrBubbleColumn() || player.getPassengers().isEmpty()) {
                     traveling.remove(player.getUniqueId());
                     landing.remove(player.getUniqueId());
                     player.sendMessage(rocket.getLandingMessage());
@@ -202,7 +203,7 @@ public class RocketManager extends CoreManager {
                     landingStand.remove();
                     cancel();
                     return;
-                }*//*
+                }*/
                 new BukkitRunnable() {
                     @Override
                     public void run() {
@@ -214,7 +215,7 @@ public class RocketManager extends CoreManager {
                     }
                 }.runTaskLater(plugin, 20L);
             }
-        }.runTaskTimer(plugin, 20L, 40L);*/
+        }.runTaskTimer(plugin, 20L, 40L);
     }
     @Deprecated
     private void land(Rocket rocket, Player player, Location location, ArmorStand stand) {
@@ -223,6 +224,7 @@ public class RocketManager extends CoreManager {
         stand.teleport(loc);
         player.teleport(loc);
         stand.addPassenger(player);
+        landing.put(player.getUniqueId(), new LandingInfo(rocket, player, stand, player.getLocation().toVector(), location));
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -235,6 +237,7 @@ public class RocketManager extends CoreManager {
                     player.sendMessage(rocket.getLandingMessage());
                     stand.eject();
                     stand.remove();
+                    landing.remove(player.getUniqueId());
                     cancel();
                     return;
                 }
@@ -270,7 +273,7 @@ public class RocketManager extends CoreManager {
     }
     public ArmorStand spawnRocket(Location location, boolean isLaunch) {
         ArmorStand stand = location.getWorld().spawn(location, ArmorStand.class);
-        stand.getEquipment().setBoots(isLaunch ? settings.getLaunchItem() : settings.getLandItem(), true);
+        stand.getEquipment().setHelmet(isLaunch ? settings.getLaunchItem() : settings.getLandItem(), true);
         stand.addDisabledSlots(EquipmentSlot.HEAD);
         stand.setCanPickupItems(false);
         stand.setSilent(true);
@@ -387,21 +390,14 @@ public class RocketManager extends CoreManager {
         WILDERNESS;
 
         boolean isLocationSafe(RocketSettings.TownySettings settings) {
-            switch (this) {
-                case OWN_TOWN:
-                    return settings.isLandOwnTown();
-                case OWN_NATION:
-                    return settings.isLandOwnNation();
-                case ALLY_TERRITORY:
-                    return settings.isLandAllyTerritory();
-                case ENEMY_TERRITORY:
-                    return settings.isLandEnemyTerritory();
-                case NEUTRAL_TERRITORY:
-                    return settings.isLandNeutralTerritory();
-                case WILDERNESS:
-                    return true;
-            }
-            return false;
+            return switch (this) {
+                case OWN_TOWN -> settings.isLandOwnTown();
+                case OWN_NATION -> settings.isLandOwnNation();
+                case ALLY_TERRITORY -> settings.isLandAllyTerritory();
+                case ENEMY_TERRITORY -> settings.isLandEnemyTerritory();
+                case NEUTRAL_TERRITORY -> settings.isLandNeutralTerritory();
+                case WILDERNESS -> true;
+            };
         }
     }
     @Getter
@@ -412,7 +408,7 @@ public class RocketManager extends CoreManager {
         @Setter
         private Vector pastPoint;
         private BukkitTask landingTask;
-        private Location landingLocation;
+        private final Location landingLocation;
 
         public LandingInfo(Rocket rocket, Player player, ArmorStand landingStand, Vector pastPoint, Location landingLocation) {
             this.rocket = rocket;
