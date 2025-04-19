@@ -55,10 +55,13 @@ public class FuelManager implements Listener {
     public void onRightClick(PlayerInteractEvent event) {
         if(!fuelingPlayers.containsKey(event.getPlayer().getUniqueId()))
             return;
-        if(event.getAction() != Action.RIGHT_CLICK_AIR)
+        if(event.getAction() != Action.RIGHT_CLICK_AIR || event.getAction() != Action.RIGHT_CLICK_BLOCK)
             return;
-        if(!(event.getHand() == EquipmentSlot.HAND && isFuel(event.getPlayer(), event.getPlayer().getInventory().getItemInMainHand())))
+        event.setCancelled(true);
+        if(!(event.getHand() == EquipmentSlot.HAND && isFuel(event.getPlayer(), event.getPlayer().getInventory().getItemInMainHand()))) {
+            event.getPlayer().sendMessage(rocketManager.getMessage("INVALID_FUEL"));
             return;
+        }
         if(fueling.containsKey(event.getPlayer().getUniqueId())) {
             event.getPlayer().sendMessage(rocketManager.getMessage("ALREADY_FUELING"));
             return;

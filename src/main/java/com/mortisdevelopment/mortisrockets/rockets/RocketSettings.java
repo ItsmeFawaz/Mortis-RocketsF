@@ -27,13 +27,13 @@ public class RocketSettings {
     private final boolean landingAllowMovement; //TODO: use PlayerMove event to check if player is moving, if so, cancel sideways movement
     private final double landingMoveSpeed; //TODO: use this value to set movement speed
     private final boolean dropRocketOnLand;
-    /*private final int landingDismountTime; //TODO: Grace period before player can dismount, check config options for grace period
-    private final boolean protectWhileDismount;*/ //TODO:  invulnerability while dismount time
+    private final int landingDismountTime; //TODO: Grace period before player can dismount, check config options for grace period
+    private final boolean protectWhileDismount; //TODO:  invulnerability while dismount time
     private final double landingParticleOffset;
     private final int inactivityTime;
     private final TownySettings townySettings;
 
-    public RocketSettings(String url, ItemStack launchItem, ItemStack landItem, ItemStack inventoryItem, int placeTime, int pickupTime, int fuelTime, int launchingTime, int launchLiftoffTime,  int launchingSpeed, boolean launchInvincibility, boolean requireFuel, boolean insertFuelIndividually, int landingDistance, boolean landingAllowMovement, double landingMoveSpeed, boolean dropRocketOnLand, double landingParticleOffset, int inactivityTime, ConfigurationSection townySettingsSection) {
+    public RocketSettings(String url, ItemStack launchItem, ItemStack landItem, ItemStack inventoryItem, int placeTime, int pickupTime, int fuelTime, int launchingTime, int launchLiftoffTime,  int launchingSpeed, boolean launchInvincibility, boolean requireFuel, boolean insertFuelIndividually, int landingDistance, boolean landingAllowMovement, double landingMoveSpeed, boolean dropRocketOnLand,int landingDismountTime, boolean protectWhileDismount, double landingParticleOffset, int inactivityTime, ConfigurationSection townySettingsSection) {
         this.url = url;
         this.launchItem = launchItem;
         this.landItem = landItem;
@@ -51,6 +51,8 @@ public class RocketSettings {
         this.landingAllowMovement = landingAllowMovement;
         this.landingMoveSpeed = landingMoveSpeed;
         this.dropRocketOnLand = dropRocketOnLand;
+        this.landingDismountTime = landingDismountTime;
+        this.protectWhileDismount = protectWhileDismount;
         this.landingParticleOffset = landingParticleOffset;
         this.inactivityTime = inactivityTime;
         this.townySettings = loadTownySettings(townySettingsSection);
@@ -77,15 +79,15 @@ public class RocketSettings {
         boolean useTowny = section.getBoolean("use-towny");
         boolean launchOwnTown = section.getBoolean("launch.own-town");
         boolean launchOwnNation = section.getBoolean("launch.own-nation");
-        boolean launchAllyTerritory = section.getBoolean("launch.own-town");
-        boolean launchEnemyTerritory = section.getBoolean("launch.own-town");
-        boolean launchNeutralTerritory = section.getBoolean("");
+        boolean launchAllyTerritory = section.getBoolean("launch.ally-territory");
+        boolean launchEnemyTerritory = section.getBoolean("launch.enemy-territory");
+        boolean launchNeutralTerritory = section.getBoolean("launch.neutral-territory");
         int launchDistanceFromUnauthorizedZones = section.getInt("launch.distance-from-unathorized-zones");
         boolean landOwnTown = section.getBoolean("land.own-town");
         boolean landOwnNation = section.getBoolean("land.own-nation");
-        boolean landAllyTerritory = section.getBoolean("land.own-town");
-        boolean landEnemyTerritory = section.getBoolean("land.own-town");
-        boolean landNeutralTerritory = section.getBoolean("");
+        boolean landAllyTerritory = section.getBoolean("land.ally-territory");
+        boolean landEnemyTerritory = section.getBoolean("land.enemy-territory");
+        boolean landNeutralTerritory = section.getBoolean("land.neutral-territory");
         int landDistanceFromUnauthorizedZones = section.getInt("land.distance-from-unathorized-zones");
         return new RocketSettings.TownySettings(useTowny, launchOwnTown, launchOwnNation, launchAllyTerritory, launchEnemyTerritory, launchNeutralTerritory, launchDistanceFromUnauthorizedZones, landOwnTown, landOwnNation, landAllyTerritory, landEnemyTerritory, landNeutralTerritory, landDistanceFromUnauthorizedZones);
     }

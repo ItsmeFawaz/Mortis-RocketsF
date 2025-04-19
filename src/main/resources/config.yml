@@ -1,7 +1,10 @@
+debug: false
 messages:
   no_space: "&cThere are blocks above you"
   land_near_town: "&cThe landing location is near a town"
   launch_near_town: "&cThe launching location is near a town"
+  land_not_allowed: "&cYou cannot land inside %territory_type%"
+  launch_not_allowed: "&cYou cannot launch from %territory_type%"
   outside_range: "&cThe specified location is outside the range"
   not_safe: "&cThe landing location is not safe"
   no-permission: "&cYou don't have permission to use this"
@@ -71,12 +74,12 @@ settings:
     distance: 50
     #allows players to slightly adjust the rocket's position during landing using wasd, similar to the hellpods in helldivers 2 or drop pods in planetside 2
     allow-movement: false
-    movement-speed: 0.8
+    movement-speed: 0.15
     #drops the rocket item on landing, in case you want rockets to be reusable
     drop-rocket-on-landing: true
     #time in seconds that a player remains in the rocket once landed before being dismounted, prevents players from landing right on top of enemies and immediately being able to attack them
     # set to 0 to disable
-    landing-dismount-time: 20
+    landing-dismount-time: 5
     #should the player be invulnerable to damage while still in the rocket and waiting to be dismounted?
     protect-while-dismounting: false
   deployment:
@@ -93,6 +96,7 @@ settings:
       own-nation: true
       ally-territory: true
       enemy-territory: false
+      neutral-territory: true
       #distance in chunks from a non allowed launching zone (enemy territory for example)
       #set to 0 to prevent launching directly on top of enemy towns but still being able to launch right next to their chunks
       distance-from-unathorized-zones: 8
@@ -101,6 +105,7 @@ settings:
       own-nation: true
       ally-territory: true
       enemy-territory: false
+      neutral-territory: true
       #distance in chunks from a non allowed landing zone (enemy territory for example)
       #set to 0 to prevent landing directly on top of enemy towns but still being able to land right next to their chunks
       #this only affects the initial launch coordinates entered, if rockets are allowed to move during landing and they move into not allowed chunks they can still land there
@@ -109,7 +114,7 @@ settings:
 rockets:
   MARS:
     launching-message: "&aYou are launching to Mars"
-    landing-message: "&bYou have been landed to Mars"
+    landing-message: "&bYou have been landed to Mars, please wait 5 seconds till dismount"
     world: world
     location: 100,1300
     location2: 300,-1400
@@ -118,7 +123,7 @@ rockets:
     ocean-checker: true
   JUPITER:
     launching-message: "&aYou are launching to Jupiter"
-    landing-message: "&bYou have been landed to Jupiter"
+    landing-message: "&bYou have been landed to Jupiter, please wait 5 seconds till dismount"
     world: world_nether
     location: 100,1300
     location2: 300,-1400

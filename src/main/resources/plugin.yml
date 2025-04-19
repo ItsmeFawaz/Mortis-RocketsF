@@ -5,6 +5,8 @@ api-version: '1.18'
 softdepend:
   - EssentialsX
   - Towny
+depend:
+  - ProtocolLib
 commands:
   rocket:
     aliases: [rockets, mortisrocket, mortisrockets]

@@ -30,4 +30,9 @@ public class Manager {
         Bukkit.getScheduler().cancelTasks(plugin);
         setConfigManager(new ConfigManager(this));
     }
+    public void debug(String message) {
+        if (plugin.getConfig().getBoolean("debug")) {
+            plugin.getLogger().info(message);
+        }
+    }
 }

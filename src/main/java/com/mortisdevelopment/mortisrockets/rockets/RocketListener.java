@@ -36,6 +36,7 @@ public class RocketListener implements Listener {
     private final RocketManager rocketManager;
     private final HashMap<Player, PendingRocketPlacement> rocketPlacements;
     private final HashMap<Player, PendingRocketPickup> rocketPickups;
+    @Getter
     private final BukkitTask timeScheduler;
     private final ProtocolManager manager = ProtocolLibrary.getProtocolManager();
 
@@ -47,47 +48,14 @@ public class RocketListener implements Listener {
         manager.addPacketListener(new PacketAdapter(MortisRockets.getInstance(), ListenerPriority.NORMAL, PacketType.Play.Client.STEER_VEHICLE) {
             @Override
             public void onPacketReceiving(PacketEvent event) {
-                if (!(rocketManager.getLanding().containsKey(event.getPlayer().getUniqueId()))) {
+                RocketManager.LandingInfo landingInfo = rocketManager.getLanding().get(event.getPlayer().getUniqueId());
+                if (landingInfo == null || !landingInfo.isDropping()) {
                     return;
                 }
-                Player player = event.getPlayer();
                 PacketContainer packet = event.getPacket();
                 float sideways = packet.getFloat().read(0);
                 float forward = packet.getFloat().read(1);
-                float multiplier = 0.1f; // Adjust this value as needed
-
-                // Apply the multiplier to the sideways and forward values
-                sideways *= multiplier;
-                forward *= multiplier;
-                // Get the player's direction vector
-                Vector direction = player.getLocation().getDirection();
-                // Calculate the sideways movement vector
-                Vector sidewaysVector = new Vector(direction.getZ(), 0, direction.getX()).normalize().multiply(sideways);
-
-                // Calculate the forward movement vector
-                Vector forwardVector = direction.clone().setY(0).normalize().multiply(forward);
-
-                // Combine the vectors to get the final velocity
-                Vector velocity = forwardVector.add(sidewaysVector);
-
-                // Set the velocity of the ArmorStand
-                ArmorStand armorStand = rocketManager.getLanding().get(player.getUniqueId()).getLandingStand(); // Replace with your method to get the ArmorStand
-                if (armorStand != null) {
-                    Vector currentVelocity = armorStand.getVelocity();
-                    //Bukkit.broadcastMessage("X: " + currentVelocity.getX() + " Y: " + currentVelocity.getY() + " Z: " + currentVelocity.getZ());
-                    if(currentVelocity.getX() > 0.5F) {
-                        currentVelocity.setX(0.5F);
-                    }
-                    if(currentVelocity.getZ() > 0.5F) {
-                        currentVelocity.setZ(0.5F);
-                    }
-                    if(currentVelocity.getX() < -0.5F)
-                        currentVelocity.setX(-0.5F);
-                    if(currentVelocity.getZ() < -0.5F)
-                        currentVelocity.setZ(-0.5F);
-                    // Set the new velocity while keeping the Y component unchanged
-                    armorStand.setVelocity(currentVelocity.add(velocity));
-                }
+                performLandingMechanics(event.getPlayer(), landingInfo, sideways, forward);
             }
         });
         timeScheduler = Bukkit.getScheduler().runTaskTimer(rocketManager.getPlugin(), () -> {
@@ -114,6 +82,7 @@ public class RocketListener implements Listener {
                 Map.Entry<Player, PendingRocketPlacement> entry = rocketLocationsIterator.next();
                 if (entry.getValue().getTime() < currentTime) {
                     ArmorStand rocket = rocketManager.spawnRocket(entry.getValue().getLocation(), true);
+                    rocketManager.getPlacedRockets().put(rocket, System.currentTimeMillis() + (rocketManager.getSettings().getInactivityTime()*1000L));
                     rocketLocationsIterator.remove();
                 }
             }
@@ -139,8 +108,7 @@ public class RocketListener implements Listener {
     }
     @EventHandler
     public void onMount(EntityMountEvent evt) {
-        ArmorStand rocket;
-        if(evt.getMount() instanceof ArmorStand && rocketManager.getPlacedRockets().containsKey((rocket = (ArmorStand) evt.getMount()))) {
+        if(evt.getMount() instanceof ArmorStand rocket && rocketManager.getPlacedRockets().containsKey(rocket)) {
             rocketManager.getPlacedRockets().put(rocket, -1L);
         }
     }
@@ -199,9 +167,9 @@ public class RocketListener implements Listener {
     }
     @EventHandler
     public void onMove(PlayerMoveEvent event) {
-        if(rocketManager.getLanding().containsKey(event.getPlayer().getUniqueId())) {
+        /*if(rocketManager.getLanding().containsKey(event.getPlayer().getUniqueId())) {
             performLandingMechanics(event.getPlayer(), rocketManager.getLanding().get(event.getPlayer().getUniqueId()));
-        }
+        }*/
         if(!event.hasChangedBlock())
             return;
         if(rocketPlacements.containsKey(event.getPlayer())) {
@@ -283,30 +251,39 @@ public class RocketListener implements Listener {
         }
 
     }
-    private void performLandingMechanics(Player player, RocketManager.LandingInfo landingInfo) {
+    private void performLandingMechanics(Player player, RocketManager.LandingInfo landingInfo, float sideways, float forward) {
         RocketSettings settings = rocketManager.getSettings();
-        if (player.isDead() || player.isOnGround() || player.isInLava() || player.isInPowderedSnow() || player.isInWaterOrBubbleColumn() || player.getPassengers().isEmpty()) {
-            player.sendMessage(landingInfo.getRocket().getLandingMessage());
-            rocketManager.getTraveling().remove(player.getUniqueId());
-            rocketManager.getLanding().remove(player.getUniqueId());
-            player.eject();
-            player.setFallDistance(0);
-            landingInfo.getLandingStand().remove();
-            landingInfo.getLandingTask().cancel();
-            if(settings.isDropRocketOnLand())
-                player.getLocation().getWorld().dropItem(player.getLocation(), settings.getInventoryItem());
+        ArmorStand stand = landingInfo.getLandingStand();
+        if (stand.isDead() || stand.isOnGround() || stand.isInLava() || stand.isInPowderedSnow() || stand.isInWaterOrBubbleColumn() /*|| stand.getPassengers().isEmpty()*/) {
+            //Change this to make the armorstand persistant
+            landingInfo.startDismount();
         } else {
-            if((player.getLocation().getY() - landingInfo.getLandingLocation().getY()) > 20) {
-                if(!settings.isLandingAllowMovement()) {
-                    player.setVelocity(new Vector(0, player.getVelocity().getY(), 0));
+            ArmorStand armorStand = rocketManager.getLanding().get(player.getUniqueId()).getLandingStand();
+            if (armorStand != null) {
+                Vector currentVelocity = armorStand.getVelocity();
+                Vector direction = player.getLocation().getDirection();
+                // Calculate sideways movement
+                if (sideways != 0) {
+                    Vector sidewaysVector = new Vector(direction.getZ(), 0, -direction.getX()).normalize().multiply(sideways * settings.getLandingMoveSpeed());
+                    currentVelocity.add(sidewaysVector);
                 }
-            } else {
-                final Vector vector = player.getLocation().toVector().subtract(landingInfo.getPastPoint()).multiply(.8 * (rocketManager.getSettings().isLandingAllowMovement() ? rocketManager.getSettings().getLandingMoveSpeed() : 0));
-                player.setVelocity(vector.setY(-.3));
-                landingInfo.setPastPoint(player.getLocation().toVector());
-            }
 
-            /*;*/
+                // Calculate forward movement
+                if (forward != 0) {
+                    Vector forwardVector = direction.clone().setY(0).normalize().multiply(forward * settings.getLandingMoveSpeed());
+                    currentVelocity.add(forwardVector);
+                }
+                double maxVelocity = 0.75F; // Set the maximum velocity
+
+                // Cap the velocity if it exceeds the maximum value
+                if (currentVelocity.length() > maxVelocity) {
+                    currentVelocity.normalize().multiply(maxVelocity);
+                }
+                // Restore the original Y velocity
+                currentVelocity.setY(-0.3F);
+                // Apply the new velocity to the ArmorStand
+                armorStand.setVelocity(currentVelocity);
+            }
 
         }
 
