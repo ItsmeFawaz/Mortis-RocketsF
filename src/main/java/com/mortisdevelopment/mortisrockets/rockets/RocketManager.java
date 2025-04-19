@@ -35,15 +35,13 @@ public class RocketManager extends CoreManager {
     private final Map<String, Rocket> rocketById;
     private final HashMap<ArmorStand, Long> placedRockets;
     private final HashMap<UUID, BukkitTask> launchTasks;
-    private final Set<UUID> traveling;
-    private final HashMap<UUID, LandingInfo> landing; //TODO: Possibly redundant, remove if not used(Possibly also use it for Allow Movement)
+    private final HashMap<UUID, TravelInfo> traveling; //TODO: Possibly redundant, remove if not used(Possibly also use it for Allow Movement)
     private final TownyAPI townyAPI = TownyAPI.getInstance();
 
     public RocketManager(RocketSettings settings) {
         this.settings = settings;
         this.rocketById = new HashMap<>();
-        this.traveling = new HashSet<>();
-        this.landing = new HashMap<>();
+        this.traveling = new HashMap<>();
         placedRockets = new HashMap<>();
         fuelManager = new FuelManager(this);
         launchTasks = new HashMap<>();
@@ -97,7 +95,7 @@ public class RocketManager extends CoreManager {
     }
 
     private boolean canTravel(Rocket rocket, Player player) {
-        if (traveling.contains(player.getUniqueId())) {
+        if (traveling.containsKey(player.getUniqueId())) {
             player.sendMessage(getMessage("ALREADY_TRAVELING"));
             return false;
         }
@@ -151,7 +149,6 @@ public class RocketManager extends CoreManager {
     }
 
     private void launch(Rocket rocket, Player player, Location location, boolean fromRocket) {
-        traveling.add(player.getUniqueId());
         player.sendMessage(rocket.getLaunchingMessage());
         ArmorStand stand;
         if(!fromRocket) {
@@ -161,8 +158,9 @@ public class RocketManager extends CoreManager {
             stand = (ArmorStand) player.getVehicle();
             placedRockets.remove(stand);
         }
-
-        new BukkitRunnable() {
+        TravelInfo travelInfo = new TravelInfo(rocket, player, stand, stand.getLocation() , location);
+        traveling.put(player.getUniqueId(), travelInfo);
+        travelInfo.setRunningTask(new BukkitRunnable() {
             int count = 0;
             @Override
             public void run() {
@@ -180,48 +178,37 @@ public class RocketManager extends CoreManager {
                     land(rocket, player, location, stand);
                 cancel();
             }
-        }.runTaskTimer(plugin, 0L, 20L);
+        }.runTaskTimer(plugin, 0L, 20L));
     }
     //TODO :-
     // - Grace period after landing
     private void landWithMovement(Rocket rocket, Player player, Location location, ArmorStand stand) {
         Location loc = new Location(location.getWorld(), location.getX(), location.getY() + settings.getLandingDistance(), location.getZ());
         stand.remove();
-        stand.teleport(loc);
-        stand.getEquipment().setHelmet(settings.getLandItem());
         player.teleport(loc);
         ArmorStand landingStand = spawnRocket(loc, false);
         landingStand.addPassenger(player);
+        TravelInfo travelInfo = traveling.get(player.getUniqueId());
         //landingInfo.startSuicideBurn();
-        new BukkitRunnable() {
+        travelInfo.setStand(landingStand);
+        travelInfo.setTravelStage(TravelInfo.TravelStage.LANDING);
+        travelInfo.setRunningTask(new BukkitRunnable() {
             @Override
             public void run() {
                 landingStand.getWorld().playSound(player.getLocation(), Sound.BLOCK_LAVA_EXTINGUISH, 1, 1);
                 landingStand.setGravity(false);
                 landingStand.getWorld().spawnParticle(Particle.LAVA, landingStand.getLocation().add(0, settings.getLandingParticleOffset(), 0), 50);
-                /*if (player.isDead() || player.isOnGround() || player.isInLava() || player.isInPowderedSnow() || player.isInWaterOrBubbleColumn() || player.getPassengers().isEmpty()) {
-                    traveling.remove(player.getUniqueId());
-                    landing.remove(player.getUniqueId());
-                    player.sendMessage(rocket.getLandingMessage());
-                    player.setGravity(true);
-                    player.eject();
-                    landingStand.remove();
-                    cancel();
-                    return;
-                }*/
+                travelInfo.setRunningTask(new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        landingStand.setGravity(true);
+                        landingStand.getWorld().spawnParticle(Particle.LAVA, landingStand.getLocation().add(0, settings.getLandingParticleOffset(), 0), 50);
+                        player.getWorld().playSound(player.getLocation(), Sound.BLOCK_LAVA_EXTINGUISH, 1, 1);
+                        travelInfo.startSuicideBurn();
+                    }
+                }.runTaskLater(plugin, 20L));
             }
-        }.runTaskLater(plugin, 20L);
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                landingStand.getWorld().spawnParticle(Particle.LAVA, landingStand.getLocation().add(0, settings.getLandingParticleOffset(), 0), 50);
-                player.getWorld().playSound(player.getLocation(), Sound.BLOCK_LAVA_EXTINGUISH, 1, 1);
-                landingStand.setGravity(true);
-                LandingInfo landingInfo = new LandingInfo(rocket, player, landingStand);
-                landing.put(player.getUniqueId(), landingInfo);
-                landingInfo.startSuicideBurn();
-            }
-        }.runTaskLater(plugin, 40L);
+        }.runTaskLater(plugin, 20L));
     }
     @Deprecated
     private void land(Rocket rocket, Player player, Location location, ArmorStand stand) {
@@ -241,6 +228,7 @@ public class RocketManager extends CoreManager {
                 stand.getWorld().spawnParticle(Particle.LAVA, stand.getLocation(), 50);
                 if (stand.isDead() || stand.isOnGround() || stand.isInLava() || stand.isInPowderedSnow() || stand.isInWaterOrBubbleColumn() || stand.getPassengers().isEmpty()) {
                     traveling.remove(player.getUniqueId());
+                    //TODO: Add dismount mechanics here
                     player.sendMessage(rocket.getLandingMessage());
                     stand.eject();
                     stand.remove();
@@ -296,7 +284,6 @@ public class RocketManager extends CoreManager {
             if (player.isDead() || player.isOnGround() || player.isInLava() || player.isInPowderedSnow() || player.isInWaterOrBubbleColumn() || player.getPassengers().isEmpty()) {
                 player.sendMessage(rocket.getLandingMessage());
                 traveling.remove(player.getUniqueId());
-                landing.remove(player.getUniqueId());
                 player.eject();
                 player.setFallDistance(0);
                 player.removePotionEffect(PotionEffectType.SLOW_FALLING);
@@ -310,7 +297,6 @@ public class RocketManager extends CoreManager {
     }
     private void performLanding(Player player, Rocket rocket, ArmorStand landingStand) {
         traveling.remove(player.getUniqueId());
-        landing.remove(player.getUniqueId());
         player.sendMessage(rocket.getLandingMessage());
         player.setGravity(true);
         player.eject();
@@ -410,57 +396,58 @@ public class RocketManager extends CoreManager {
         }
     }
     @Getter
-    public class LandingInfo {
+    public class TravelInfo {
         private final Rocket rocket;
         private final Player player;
-        private final ArmorStand landingStand;
-        private BukkitTask landingTask;
-        private LandingStage landingStage;
+        @Setter
+        private ArmorStand stand;
+        @Setter
+        private BukkitTask runningTask;
+        private Location landingLocation;
+        private Location launchingLocation;
+        @Setter
+        private TravelStage travelStage;
 
-        public LandingInfo(Rocket rocket, Player player, ArmorStand landingStand) {
+        public TravelInfo(Rocket rocket, Player player, ArmorStand stand, Location launchingLocation, Location landingLocation) {
             this.rocket = rocket;
             this.player = player;
-            this.landingStand = landingStand;
-            this.landingStage = LandingStage.DROP;
+            this.stand = stand;
+            this.launchingLocation = launchingLocation;
+            this.landingLocation = landingLocation;
+            this.travelStage = TravelStage.LAUNCHING;
         }
         public boolean isDropping() {
-            switch (landingStage) {
-                case DROP -> {
-                    return true;
-                }
-                case DISMOUNT -> {
-                    return false;
-                }
-            }
-            return false;
+            return travelStage == TravelStage.DROP;
         }
+
         public void startSuicideBurn() {
-            landingTask = new BukkitRunnable() {
+            travelStage = TravelStage.DROP;
+            runningTask = new BukkitRunnable() {
                 @Override
                 public void run() {
                     player.getWorld().playSound(player.getLocation(), Sound.BLOCK_LAVA_EXTINGUISH, 1, 1);
-                    landingStand.getWorld().spawnParticle(Particle.LAVA, landingStand.getLocation().add(0, settings.getLandingParticleOffset(), 0), 50);
+                    stand.getWorld().spawnParticle(Particle.LAVA, stand.getLocation().add(0, settings.getLandingParticleOffset(), 0), 50);
                 }
             }.runTaskTimer(plugin, 0L, 20L);
         }
         public void startDismount() {
-            landingStage = LandingStage.DISMOUNT;
+            travelStage = TravelStage.DISMOUNTING;
             player.sendMessage(rocket.getLandingMessage());
-
-            landingTask.cancel();
-            landingTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                landingStand.eject();
+            runningTask.cancel();
+            runningTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                stand.eject();
                 player.setFallDistance(0);
-                landingStand.remove();
-                landing.remove(player.getUniqueId());
+                stand.remove();
                 traveling.remove(player.getUniqueId());
                 if(settings.isDropRocketOnLand())
                     player.getLocation().getWorld().dropItem(player.getLocation(), settings.getInventoryItem());
             }, (20L*settings.getLandingDismountTime()));
         }
-        private enum LandingStage {
+        public enum TravelStage {
+            LAUNCHING,
+            LANDING,
             DROP,
-            DISMOUNT
+            DISMOUNTING
         }
     }
 

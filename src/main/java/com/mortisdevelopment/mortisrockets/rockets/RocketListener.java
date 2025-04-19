@@ -21,7 +21,6 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.EquipmentSlot;
-import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 import org.spigotmc.event.entity.EntityDismountEvent;
@@ -48,14 +47,14 @@ public class RocketListener implements Listener {
         manager.addPacketListener(new PacketAdapter(MortisRockets.getInstance(), ListenerPriority.NORMAL, PacketType.Play.Client.STEER_VEHICLE) {
             @Override
             public void onPacketReceiving(PacketEvent event) {
-                RocketManager.LandingInfo landingInfo = rocketManager.getLanding().get(event.getPlayer().getUniqueId());
-                if (landingInfo == null || !landingInfo.isDropping()) {
+                RocketManager.TravelInfo travelInfo = rocketManager.getTraveling().get(event.getPlayer().getUniqueId());
+                if (travelInfo == null || !travelInfo.isDropping()) {
                     return;
                 }
                 PacketContainer packet = event.getPacket();
                 float sideways = packet.getFloat().read(0);
                 float forward = packet.getFloat().read(1);
-                performLandingMechanics(event.getPlayer(), landingInfo, sideways, forward);
+                performLandingMechanics(event.getPlayer(), travelInfo, sideways, forward);
             }
         });
         timeScheduler = Bukkit.getScheduler().runTaskTimer(rocketManager.getPlugin(), () -> {
@@ -107,6 +106,34 @@ public class RocketListener implements Listener {
         e.getPlayer().setResourcePack(rocketManager.getSettings().getUrl());
     }
     @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        RocketManager.TravelInfo travel = rocketManager.getTraveling().remove(event.getPlayer().getUniqueId());
+        if(travel != null) {
+            switch (travel.getTravelStage()) {
+                case LAUNCHING -> {
+                    travel.getRunningTask().cancel();
+                    event.getPlayer().teleport(travel.getLaunchingLocation());
+                }
+                case LANDING ->  {
+                    travel.getRunningTask().cancel();
+                    event.getPlayer().teleport(travel.getLandingLocation().add(0,2,0));
+                }
+                case DROP -> {
+                    travel.getRunningTask().cancel();
+                    event.getPlayer().teleport(travel.getStand().getLocation().getWorld().getHighestBlockAt(travel.getStand().getLocation()).getLocation().add(0,2,0));
+                }
+                case DISMOUNTING -> {
+                    travel.getRunningTask().cancel();
+                    travel.getStand().eject();
+                }
+            }
+            if(rocketManager.getSettings().isDropRocketOnLand()) {
+                event.getPlayer().getWorld().dropItem(travel.getStand().getLocation(), rocketManager.getSettings().getInventoryItem());
+            }
+            travel.getStand().remove();
+        }
+    }
+    @EventHandler
     public void onMount(EntityMountEvent evt) {
         if(evt.getMount() instanceof ArmorStand rocket && rocketManager.getPlacedRockets().containsKey(rocket)) {
             rocketManager.getPlacedRockets().put(rocket, -1L);
@@ -122,7 +149,7 @@ public class RocketListener implements Listener {
             rocketManager.getPlacedRockets().put(rocket, System.currentTimeMillis() + (rocketManager.getSettings().getInactivityTime()*1000L));
             return;
         }
-        if (!rocketManager.getTraveling().contains(player.getUniqueId())) {
+        if (!rocketManager.getTraveling().containsKey(player.getUniqueId())) {
             return;
         }
         e.setCancelled(true);
@@ -160,16 +187,13 @@ public class RocketListener implements Listener {
             e.setCancelled(true);
             return;
         }
-        if (!rocketManager.getTraveling().contains(player.getUniqueId())) {
+        if (!rocketManager.getTraveling().containsKey(player.getUniqueId())) {
             return;
         }
         e.setCancelled(true);
     }
     @EventHandler
     public void onMove(PlayerMoveEvent event) {
-        /*if(rocketManager.getLanding().containsKey(event.getPlayer().getUniqueId())) {
-            performLandingMechanics(event.getPlayer(), rocketManager.getLanding().get(event.getPlayer().getUniqueId()));
-        }*/
         if(!event.hasChangedBlock())
             return;
         if(rocketPlacements.containsKey(event.getPlayer())) {
@@ -251,14 +275,14 @@ public class RocketListener implements Listener {
         }
 
     }
-    private void performLandingMechanics(Player player, RocketManager.LandingInfo landingInfo, float sideways, float forward) {
+    private void performLandingMechanics(Player player, RocketManager.TravelInfo travelInfo, float sideways, float forward) {
         RocketSettings settings = rocketManager.getSettings();
-        ArmorStand stand = landingInfo.getLandingStand();
+        ArmorStand stand = travelInfo.getStand();
         if (stand.isDead() || stand.isOnGround() || stand.isInLava() || stand.isInPowderedSnow() || stand.isInWaterOrBubbleColumn() /*|| stand.getPassengers().isEmpty()*/) {
             //Change this to make the armorstand persistant
-            landingInfo.startDismount();
+            travelInfo.startDismount();
         } else {
-            ArmorStand armorStand = rocketManager.getLanding().get(player.getUniqueId()).getLandingStand();
+            ArmorStand armorStand = rocketManager.getTraveling().get(player.getUniqueId()).getStand();
             if (armorStand != null) {
                 Vector currentVelocity = armorStand.getVelocity();
                 Vector direction = player.getLocation().getDirection();
