@@ -35,7 +35,7 @@ public class RocketManager extends CoreManager {
     private final Map<String, Rocket> rocketById;
     private final HashMap<ArmorStand, Long> placedRockets;
     private final HashMap<UUID, BukkitTask> launchTasks;
-    private final HashMap<UUID, TravelInfo> traveling; //TODO: Possibly redundant, remove if not used(Possibly also use it for Allow Movement)
+    private final HashMap<UUID, TravelInfo> traveling;
     private final TownyAPI townyAPI = TownyAPI.getInstance();
 
     public RocketManager(RocketSettings settings) {
@@ -180,8 +180,6 @@ public class RocketManager extends CoreManager {
             }
         }.runTaskTimer(plugin, 0L, 20L));
     }
-    //TODO :-
-    // - Grace period after landing
     private void landWithMovement(Rocket rocket, Player player, Location location, ArmorStand stand) {
         Location loc = new Location(location.getWorld(), location.getX(), location.getY() + settings.getLandingDistance(), location.getZ());
         stand.remove();
@@ -415,6 +413,9 @@ public class RocketManager extends CoreManager {
             this.launchingLocation = launchingLocation;
             this.landingLocation = landingLocation;
             this.travelStage = TravelStage.LAUNCHING;
+        }
+        public boolean isDismounting() {
+            return travelStage == TravelStage.DISMOUNTING;
         }
         public boolean isDropping() {
             return travelStage == TravelStage.DROP;

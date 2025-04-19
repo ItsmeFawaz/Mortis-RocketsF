@@ -187,7 +187,11 @@ public class RocketListener implements Listener {
             e.setCancelled(true);
             return;
         }
-        if (!rocketManager.getTraveling().containsKey(player.getUniqueId())) {
+        RocketManager.TravelInfo travelInfo = rocketManager.getTraveling().get(player.getUniqueId());
+        if (travelInfo == null) {
+            return;
+        }
+        if(!rocketManager.getSettings().isProtectWhileDismount() && travelInfo.isDismounting()) {
             return;
         }
         e.setCancelled(true);

@@ -24,11 +24,11 @@ public class RocketSettings {
     private final boolean requireFuel;
     private final boolean insertFuelIndividually;
     private final int landingDistance;
-    private final boolean landingAllowMovement; //TODO: use PlayerMove event to check if player is moving, if so, cancel sideways movement
-    private final double landingMoveSpeed; //TODO: use this value to set movement speed
+    private final boolean landingAllowMovement;
+    private final double landingMoveSpeed;
     private final boolean dropRocketOnLand;
-    private final int landingDismountTime; //TODO: Grace period before player can dismount, check config options for grace period
-    private final boolean protectWhileDismount; //TODO:  invulnerability while dismount time
+    private final int landingDismountTime;
+    private final boolean protectWhileDismount;
     private final double landingParticleOffset;
     private final int inactivityTime;
     private final TownySettings townySettings;
