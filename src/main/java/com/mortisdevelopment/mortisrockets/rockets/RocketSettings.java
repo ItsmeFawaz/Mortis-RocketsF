@@ -24,6 +24,8 @@ public class RocketSettings {
     private final boolean requireFuel;
     private final boolean insertFuelIndividually;
     private final int landingDistance;
+    private final int landingFreefallTime;
+    private final double thrusterFallSpeed;
     private final boolean landingAllowMovement;
     private final double landingMoveSpeed;
     private final boolean dropRocketOnLand;
@@ -33,7 +35,7 @@ public class RocketSettings {
     private final int inactivityTime;
     private final TownySettings townySettings;
 
-    public RocketSettings(String url, ItemStack launchItem, ItemStack landItem, ItemStack inventoryItem, int placeTime, int pickupTime, int fuelTime, int launchingTime, int launchLiftoffTime,  int launchingSpeed, boolean launchInvincibility, boolean requireFuel, boolean insertFuelIndividually, int landingDistance, boolean landingAllowMovement, double landingMoveSpeed, boolean dropRocketOnLand,int landingDismountTime, boolean protectWhileDismount, double landingParticleOffset, int inactivityTime, ConfigurationSection townySettingsSection) {
+    public RocketSettings(String url, ItemStack launchItem, ItemStack landItem, ItemStack inventoryItem, int placeTime, int pickupTime, int fuelTime, int launchingTime, int launchLiftoffTime,  int launchingSpeed, boolean launchInvincibility, boolean requireFuel, boolean insertFuelIndividually, int landingDistance, int landingFreefallTime, double thrusterFallSpeed, boolean landingAllowMovement, double landingMoveSpeed, boolean dropRocketOnLand,int landingDismountTime, boolean protectWhileDismount, double landingParticleOffset, int inactivityTime, ConfigurationSection townySettingsSection) {
         this.url = url;
         this.launchItem = launchItem;
         this.landItem = landItem;
@@ -48,6 +50,8 @@ public class RocketSettings {
         this.requireFuel = requireFuel;
         this.insertFuelIndividually = insertFuelIndividually;
         this.landingDistance = landingDistance;
+        this.landingFreefallTime = landingFreefallTime;
+        this.thrusterFallSpeed = thrusterFallSpeed;
         this.landingAllowMovement = landingAllowMovement;
         this.landingMoveSpeed = landingMoveSpeed;
         this.dropRocketOnLand = dropRocketOnLand;

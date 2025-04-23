@@ -19,6 +19,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.scheduler.BukkitTask;
@@ -89,8 +90,8 @@ public class RocketListener implements Listener {
             while (rocketPickupIterator.hasNext()) {
                 Map.Entry<Player, PendingRocketPickup> entry = rocketPickupIterator.next();
                 if (entry.getValue().getTime() < currentTime) {
+                    entry.getValue().getRocket().getLocation().getWorld().dropItem(entry.getValue().getRocket().getLocation(), rocketManager.getSettings().getInventoryItem());
                     entry.getValue().getRocket().remove();
-                    entry.getKey().getInventory().addItem(rocketManager.getSettings().getInventoryItem());
                     rocketManager.getPlacedRockets().remove(entry.getValue().getRocket());
                     rocketPickupIterator.remove();
                 }
@@ -137,6 +138,18 @@ public class RocketListener implements Listener {
     public void onMount(EntityMountEvent evt) {
         if(evt.getMount() instanceof ArmorStand rocket && rocketManager.getPlacedRockets().containsKey(rocket)) {
             rocketManager.getPlacedRockets().put(rocket, -1L);
+        }
+    }
+    @EventHandler
+    public void onDeath(PlayerDeathEvent event) {
+        RocketManager.TravelInfo travel = rocketManager.getTraveling().remove(event.getEntity().getUniqueId());
+        if(travel != null && travel.isDismounting()) {
+            travel.getRunningTask().cancel();
+            travel.getStand().eject();
+            travel.getStand().remove();
+            if(rocketManager.getSettings().isDropRocketOnLand()) {
+                event.getPlayer().getWorld().dropItem(travel.getStand().getLocation(), rocketManager.getSettings().getInventoryItem());
+            }
         }
     }
     @EventHandler
@@ -308,7 +321,7 @@ public class RocketListener implements Listener {
                     currentVelocity.normalize().multiply(maxVelocity);
                 }
                 // Restore the original Y velocity
-                currentVelocity.setY(-0.3F);
+                currentVelocity.setY(settings.getThrusterFallSpeed());
                 // Apply the new velocity to the ArmorStand
                 armorStand.setVelocity(currentVelocity);
             }

@@ -72,6 +72,8 @@ settings:
   land:
     #distance from the ground the rocket spawns in at, rocket falls from this distance until it lands on the ground
     distance: 50
+    land-freefall-time: 2
+    thruster-fall-speed: -0.3
     #allows players to slightly adjust the rocket's position during landing using wasd, similar to the hellpods in helldivers 2 or drop pods in planetside 2
     allow-movement: false
     movement-speed: 0.15

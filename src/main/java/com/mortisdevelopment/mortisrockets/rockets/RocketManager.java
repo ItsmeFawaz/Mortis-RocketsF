@@ -58,6 +58,7 @@ public class RocketManager extends CoreManager {
             return isOutsideTownRadius(player, location, settings.getTownySettings().getLandDistanceFromUnauthorizedZones() * 16, false);
         else {
             TerritoryType territoryType = getRespectiveTerritory(player, location);
+            plugin.getManager().debug("Checking if " + player.getName() + " can land in " + territoryType.toString() + " at " + location.getX() + " " + location.getZ());
             if(!territoryType.isLocationSafe(settings.getTownySettings(), false)) {
                 player.sendMessage(getMessage("LAND_NOT_ALLOWED").replaceText(TextReplacementConfig.builder().match("%territory_type%").replacement(territoryType.toString()).build()));
                 return false;
@@ -206,7 +207,7 @@ public class RocketManager extends CoreManager {
                     }
                 }.runTaskLater(plugin, 20L));
             }
-        }.runTaskLater(plugin, 20L));
+        }.runTaskLater(plugin, 20L*settings.getLandingFreefallTime()));
     }
     @Deprecated
     private void land(Rocket rocket, Player player, Location location, ArmorStand stand) {
