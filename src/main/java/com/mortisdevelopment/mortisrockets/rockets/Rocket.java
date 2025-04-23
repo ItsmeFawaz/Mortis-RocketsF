@@ -5,6 +5,7 @@ import lombok.Getter;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.entity.Player;
 
 import java.util.Random;
 
@@ -63,6 +64,28 @@ public class Rocket {
         }
         return null;
     }
+    public Location getLandingLocation(Player player) {
+        double minX = Math.min(location1.getX(), location2.getX());
+        double maxX = Math.max(location1.getX(), location2.getX());
+        double minZ = Math.min(location1.getZ(), location2.getZ());
+        double maxZ = Math.max(location1.getZ(), location2.getZ());
+        World world = getWorld().getWorld();
+        Random random = new Random();
+        for (int i = 0; i < 10; i++) {
+            double x = random.nextDouble(minX, maxX);
+            double z = random.nextDouble(minZ, maxZ);
+            Location location = new Location(world, x, 0, z);
+            location.setY(location.getWorld().getHighestBlockYAt(location));
+            if (!hasRequirements(location)) {
+                continue;
+            }
+            if(!plugin.getManager().getRocketManager().canLand(this, player, location, false)) {
+                continue;
+            }
+            return location;
+        }
+        return null;
+    }
 
 
     public boolean hasRequirements(Location location) {
@@ -75,4 +98,5 @@ public class Rocket {
         }
         return true;
     }
+
 }

@@ -27,8 +27,6 @@ import java.util.*;
 
 @Getter
 public class RocketManager extends CoreManager {
-    //TODO:-
-    // - Handle disconnects, crashes, deaths
     private final MortisRockets plugin = MortisRockets.getInstance();
     private final FuelManager fuelManager;
     private final RocketSettings settings;
@@ -49,18 +47,19 @@ public class RocketManager extends CoreManager {
         plugin.getServer().getPluginManager().registerEvents(fuelManager, plugin);
     }
 
-    public boolean canLand(Rocket rocket, Player player, Location location) {
+    public boolean canLand(Rocket rocket, Player player, Location location, boolean notify) {
 
         //If Towny is enabled
         if (!settings.getTownySettings().isUseTowny())
             return true;
         if (townyAPI.isWilderness(location))
-            return isOutsideTownRadius(player, location, settings.getTownySettings().getLandDistanceFromUnauthorizedZones() * 16, false);
+            return isOutsideTownRadius(player, location, settings.getTownySettings().getLandDistanceFromUnauthorizedZones(), false, notify);
         else {
             TerritoryType territoryType = getRespectiveTerritory(player, location);
             plugin.getManager().debug("Checking if " + player.getName() + " can land in " + territoryType.toString() + " at " + location.getX() + " " + location.getZ());
             if(!territoryType.isLocationSafe(settings.getTownySettings(), false)) {
-                player.sendMessage(getMessage("LAND_NOT_ALLOWED").replaceText(TextReplacementConfig.builder().match("%territory_type%").replacement(territoryType.toString()).build()));
+                if(notify)
+                    player.sendMessage(getMessage("LAND_NOT_ALLOWED").replaceText(TextReplacementConfig.builder().match("%territory_type%").replacement(territoryType.toString()).build()));
                 return false;
             } else
                 return true;
@@ -78,9 +77,10 @@ public class RocketManager extends CoreManager {
         if (!settings.getTownySettings().isUseTowny())
             return true;
         if (townyAPI.isWilderness(location))
-            return isOutsideTownRadius(player, location, settings.getTownySettings().getLandDistanceFromUnauthorizedZones() * 16, true);
+            return isOutsideTownRadius(player, location, settings.getTownySettings().getLandDistanceFromUnauthorizedZones(), true, true);
         else {
             TerritoryType territoryType = getRespectiveTerritory(player, location);
+            plugin.getManager().debug("Checking if " + player.getName() + " can launch in " + territoryType.toString() + " at " + location.getX() + " " + location.getZ());
             if(!territoryType.isLocationSafe(settings.getTownySettings(), true)) {
                 player.sendMessage(getMessage("LAUNCH_NOT_ALLOWED").replaceText(TextReplacementConfig.builder().match("%territory_type%").replacement(territoryType.toString()).build()));
                 return false;
@@ -126,7 +126,7 @@ public class RocketManager extends CoreManager {
             player.sendMessage(getMessage("OUTSIDE_RANGE"));
             return false;
         }
-        if (!canLand(rocket, player, location)) {
+        if (!canLand(rocket, player, location, true)) {
             return false;
         }
         launch(rocket, player, location, fromRocket);
@@ -137,12 +137,12 @@ public class RocketManager extends CoreManager {
         if (!canTravel(rocket, player)) {
             return false;
         }
-        Location location = rocket.getLandingLocation();
+        Location location = rocket.getLandingLocation(player);
         if (location == null) {
             player.sendMessage(getMessage("NOT_SAFE"));
             return false;
         }
-        if (!canLand(rocket, player, location)) {
+        if (!canLand(rocket, player, location, true)) {
             return false;
         }
         launch(rocket, player, location, fromRocket);
@@ -214,10 +214,13 @@ public class RocketManager extends CoreManager {
         Location loc = new Location(location.getWorld(), location.getX(), location.getY() + settings.getLandingDistance(), location.getZ());
         stand.eject();
         stand.teleport(loc);
+        stand.setItem(EquipmentSlot.HEAD, settings.getLandItem().clone());
         player.teleport(loc);
         stand.addPassenger(player);
+        TravelInfo travelInfo = traveling.get(player.getUniqueId());
+        travelInfo.setTravelStage(TravelInfo.TravelStage.LANDING);
         //landing.put(player.getUniqueId(), new LandingInfo(rocket, player, stand, player.getLocation().toVector(), location));
-        new BukkitRunnable() {
+        travelInfo.setRunningTask(new BukkitRunnable() {
             @Override
             public void run() {
                 stand.addPassenger(player);
@@ -245,7 +248,7 @@ public class RocketManager extends CoreManager {
                     }
                 }.runTaskLater(plugin, 20L);
             }
-        }.runTaskTimer(plugin, 20L, 40L);
+        }.runTaskTimer(plugin, 20L, 40L));
     }
     public void launchOff(Player player, Rocket rocket, RocketLocation rocketLocation) {
 
@@ -318,7 +321,16 @@ public class RocketManager extends CoreManager {
         if (residentTown == null)
             return TerritoryType.NEUTRAL_TERRITORY;
         Nation landNation;
-
+        if(landTown.hasNation() && residentTown.hasNation()) {
+            landNation = landTown.getNationOrNull();
+            Nation residentNation = residentTown.getNationOrNull();
+            if (landTown.getNationOrNull() == residentNation)
+                return TerritoryType.OWN_NATION;
+            if(landNation.hasAlly(residentNation) || residentNation.hasAlly(landNation))
+                return TerritoryType.ALLY_TERRITORY;
+            if(landNation.hasEnemy(residentNation) || residentNation.hasEnemy(landNation))
+                return TerritoryType.ENEMY_TERRITORY;
+        }
         if (landTown.hasNation() && (landNation = landTown.getNationOrNull()) != null && landNation.hasResident(resident))
             return TerritoryType.OWN_NATION;
         if (landTown.hasAlly(residentTown))
@@ -328,7 +340,7 @@ public class RocketManager extends CoreManager {
         return TerritoryType.NEUTRAL_TERRITORY;
     }
 
-    public boolean isOutsideTownRadius(Player player, Location location, int radius, boolean isLaunch) {
+    public boolean isOutsideTownRadius(Player player, Location location, int radius, boolean isLaunch, boolean notify) {
         if (!plugin.isTowny() || radius <= 0) {
             return true;
         }
@@ -336,11 +348,17 @@ public class RocketManager extends CoreManager {
         double locationX = location.getX();
         double locationY = location.getY();
         double locationZ = location.getZ();
-        for (double x = -radius; x <= radius; x++) {
-            for (double z = -radius; z <= radius; z++) {
+        for (int x = -(radius*16); x <= radius*16; x+=16) {
+            for (int z = -(radius*16); z <= radius*16; z+=16) {
                 Location loc = new Location(location.getWorld(), locationX + x, locationY, locationZ + z);
-                TerritoryType type = getRespectiveTerritory(player, location);
+                TerritoryType type = getRespectiveTerritory(player, loc);
+                plugin.getManager().debug("Checking if " + player.getName() + " is safe in " + type.toString() + " at " + loc.getX() + " " + loc.getZ());
                 if (!towny.isWilderness(loc) && !type.isLocationSafe(settings.getTownySettings(), isLaunch)) {
+                    if(notify)
+                        if(isLaunch)
+                            player.sendMessage(getMessage("LAUNCH_NEAR_TOWN").replaceText(TextReplacementConfig.builder().match("%territory_type%").replacement(type.toString()).build()));
+                        else
+                            player.sendMessage(getMessage("LAND_NEAR_TOWN").replaceText(TextReplacementConfig.builder().match("%territory_type%").replacement(type.toString()).build()));
                     plugin.getManager().debug("Nearby illegal " +  type.toString() + " found at X: " + loc.getX() + " Z: " + loc.getZ());
                     return false;
                 }
@@ -349,8 +367,7 @@ public class RocketManager extends CoreManager {
         return true;
     }
     public boolean isRocket(Entity entity) {
-        if(entity instanceof ArmorStand) {
-            ArmorStand stand = (ArmorStand) entity;
+        if(entity instanceof ArmorStand stand) {
             return stand.getEquipment().getHelmet().isSimilar(settings.getLaunchItem()) || stand.getEquipment().getHelmet().isSimilar(settings.getLandItem());
         }
         return false;

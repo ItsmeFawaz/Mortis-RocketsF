@@ -53,7 +53,7 @@ public class FuelManager implements Listener {
     }
     @EventHandler
     public void onRightClick(PlayerInteractEvent event) {
-        if(!fuelingPlayers.containsKey(event.getPlayer().getUniqueId()))
+        if(!fuelingPlayers.containsKey(event.getPlayer().getUniqueId()) || fuelingPlayers.get(event.getPlayer().getUniqueId()).getRemainingCost() < 0)
             return;
         if(event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK)
             return;
@@ -179,7 +179,7 @@ public class FuelManager implements Listener {
     }
     @Getter
     public class FuelProgress {
-        private final HashSet<ItemStack> usedFuel;
+        private final List<ItemStack> usedFuel;
         @Setter
         private double remainingCost;
         private final Rocket rocket;
@@ -187,13 +187,13 @@ public class FuelManager implements Listener {
         private FuelProgress(Rocket rocket) {
             this.rocket = rocket;
             this.rocketLocation = null;
-            this.usedFuel = new HashSet<>();
+            this.usedFuel = new ArrayList<>();
             this.remainingCost = rocket.getCost();
         }
         private FuelProgress(Rocket rocket, RocketLocation rocketLocation) {
             this.rocket = rocket;
             this.rocketLocation = rocketLocation;
-            this.usedFuel = new HashSet<>();
+            this.usedFuel = new ArrayList<>();
             this.remainingCost = rocket.getCost();
         }
     }

@@ -59,7 +59,6 @@ public class RocketListener implements Listener {
             }
         });
         timeScheduler = Bukkit.getScheduler().runTaskTimer(rocketManager.getPlugin(), () -> {
-            //TODO: - Take the grace period time from config
             long currentTime = System.currentTimeMillis();
             Iterator<Map.Entry<ArmorStand, Long>> rocketsIterator = rocketManager.getPlacedRockets().entrySet().iterator();
             while (rocketsIterator.hasNext()) {
@@ -108,6 +107,12 @@ public class RocketListener implements Listener {
     }
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
+        if(rocketManager.getLaunchTasks().containsKey(event.getPlayer().getUniqueId())) {
+            rocketManager.getLaunchTasks().remove(event.getPlayer().getUniqueId()).cancel();
+            event.getPlayer().getVehicle().eject();
+            event.getPlayer().getVehicle().remove();
+            event.getPlayer().getLocation().getWorld().dropItem(event.getPlayer().getLocation(), rocketManager.getSettings().getInventoryItem());
+        }
         RocketManager.TravelInfo travel = rocketManager.getTraveling().remove(event.getPlayer().getUniqueId());
         if(travel != null) {
             switch (travel.getTravelStage()) {
@@ -137,6 +142,9 @@ public class RocketListener implements Listener {
     @EventHandler
     public void onMount(EntityMountEvent evt) {
         if(evt.getMount() instanceof ArmorStand rocket && rocketManager.getPlacedRockets().containsKey(rocket)) {
+            Map.Entry<Player, PendingRocketPickup> pickup;
+            if((pickup = isBeingPickedUp(rocket)) != null)
+                rocketPickups.remove(pickup.getKey());
             rocketManager.getPlacedRockets().put(rocket, -1L);
         }
     }
@@ -151,6 +159,12 @@ public class RocketListener implements Listener {
                 event.getPlayer().getWorld().dropItem(travel.getStand().getLocation(), rocketManager.getSettings().getInventoryItem());
             }
         }
+        if(rocketManager.getLaunchTasks().containsKey(event.getPlayer().getUniqueId())) {
+            rocketManager.getLaunchTasks().remove(event.getPlayer().getUniqueId()).cancel();
+            event.getPlayer().getVehicle().eject();
+            event.getPlayer().getVehicle().remove();
+            event.getPlayer().getLocation().getWorld().dropItem(event.getPlayer().getLocation(), rocketManager.getSettings().getInventoryItem());
+        }
     }
     @EventHandler
     public void onDismount(EntityDismountEvent e) {
@@ -158,9 +172,12 @@ public class RocketListener implements Listener {
         if (!(e.getEntity() instanceof Player player)) {
             return;
         }
+        if(rocketManager.getLaunchTasks().containsKey(player.getUniqueId())) {
+            e.setCancelled(true);
+            return;
+        }
         if(e.getDismounted() instanceof ArmorStand rocket && rocketManager.getPlacedRockets().containsKey(rocket) && rocketManager.getPlacedRockets().get(rocket) == -1) {
             rocketManager.getPlacedRockets().put(rocket, System.currentTimeMillis() + (rocketManager.getSettings().getInactivityTime()*1000L));
-            return;
         }
         if (!rocketManager.getTraveling().containsKey(player.getUniqueId())) {
             return;
@@ -175,7 +192,7 @@ public class RocketListener implements Listener {
             return;
         if(!rocketManager.getPlacedRockets().containsKey(stand))
             return;
-        if(rocketPickups.containsKey(player) || isBeingPickedUp(stand)) {
+        if(rocketPickups.containsKey(player) || isBeingPickedUp(stand) != null) {
             player.sendMessage(rocketManager.getMessage("ALREADY_PICKING_UP"));
             return;
         }
@@ -228,25 +245,29 @@ public class RocketListener implements Listener {
         if(event.getAction() != Action.RIGHT_CLICK_BLOCK)
             return;
         Player player = event.getPlayer();
-
+        boolean mainHand = false;
         if ((event.getHand() == EquipmentSlot.HAND && player.getInventory().getItemInMainHand().isSimilar(rocketManager.getSettings().getInventoryItem()))) {
             if(event.getBlockFace() != BlockFace.UP) {
                 event.getPlayer().sendMessage(rocketManager.getMessage("ROCKET_PLACE_NOT_TOP"));
                 return;
             }
-            player.getInventory().getItemInMainHand().setAmount(player.getInventory().getItemInMainHand().getAmount() - 1);
+            mainHand = true;
+
         } else if(event.getHand() == EquipmentSlot.OFF_HAND && player.getInventory().getItemInOffHand().isSimilar(rocketManager.getSettings().getInventoryItem())) {
             if(event.getBlockFace() != BlockFace.UP) {
                 event.getPlayer().sendMessage(rocketManager.getMessage("ROCKET_PLACE_NOT_TOP"));
                 return;
             }
-            player.getInventory().getItemInOffHand().setAmount(player.getInventory().getItemInOffHand().getAmount() - 1);
         } else {
             return;
         }
         Location placementLocation = event.getClickedBlock().getLocation().add(0.5, 1, 0.5);
         if(!rocketManager.canLaunch(player, placementLocation))
             return;
+        if(mainHand)
+            player.getInventory().getItemInMainHand().setAmount(player.getInventory().getItemInMainHand().getAmount() - 1);
+        else
+            player.getInventory().getItemInOffHand().setAmount(player.getInventory().getItemInOffHand().getAmount() - 1);
         rocketPlacements.put(player, new PendingRocketPlacement(placementLocation));
         player.sendMessage(rocketManager.getMessage("PLACE_ROCKET"));
     }
@@ -263,12 +284,12 @@ public class RocketListener implements Listener {
         event.setCancelled(true);
         stand.addPassenger(event.getPlayer());
     }
-    private boolean isBeingPickedUp(ArmorStand rocket) {
-        for(PendingRocketPickup pickup : rocketPickups.values()) {
-            if(pickup.getRocket().equals(rocket))
-                return true;
+    private Map.Entry<Player, PendingRocketPickup> isBeingPickedUp(ArmorStand rocket) {
+        for(Map.Entry<Player, PendingRocketPickup> pickup : rocketPickups.entrySet()) {
+            if(pickup.getValue().getRocket().equals(rocket))
+                return pickup;
         }
-        return false;
+        return null;
     }
     @Getter
     public class PendingRocketPlacement {

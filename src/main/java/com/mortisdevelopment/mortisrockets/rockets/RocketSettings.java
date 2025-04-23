@@ -20,7 +20,7 @@ public class RocketSettings {
     private final int launchingTime;
     private final int launchLiftoffTime;
     private final int launchingSpeed;
-    private final boolean launchInvincibility; // TODO: Make player invulnerable and unable to leave the rocket once launch liftoff has started, Make exceptions for when the player dies if its turned off
+    private final boolean launchInvincibility;
     private final boolean requireFuel;
     private final boolean insertFuelIndividually;
     private final int landingDistance;

@@ -1,5 +1,6 @@
 package com.mortisdevelopment.mortisrockets.managers;
 
+import com.mortisdevelopment.mortisrockets.MortisRockets;
 import com.mortisdevelopment.mortisrockets.rockets.Rocket;
 import com.mortisdevelopment.mortisrockets.rockets.RocketLocation;
 import org.bukkit.Bukkit;
@@ -110,10 +111,15 @@ public class RocketCommand implements TabExecutor {
                 }catch (NumberFormatException exp) {
                     return false;
                 }
+                //TODO:- Check launch location before launch off or starting fueling
                 RocketLocation rocketLocation = new RocketLocation(x, z);
-                if(manager.getRocketManager().getSettings().isRequireFuel())
+                if(!MortisRockets.getInstance().getManager().getRocketManager().canLand(rocket, player, rocketLocation.getLocation(rocket.getWorld().getWorld()), true)) {
+                    return true;
+                }
+                if(manager.getRocketManager().getSettings().isRequireFuel()) {
+                    manager.getRocketManager().getFuelManager().cancelFueling(player);
                     manager.getRocketManager().getFuelManager().startFueling(player, rocket, rocketLocation);
-                else
+                } else
                     manager.getRocketManager().launchOff(player, rocket, rocketLocation);
                 /*if (args[args.length - 1].equalsIgnoreCase("confirm")) {
                     return manager.getRocketManager().travel(rocket, player, rocketLocation, true);
@@ -121,9 +127,10 @@ public class RocketCommand implements TabExecutor {
                     manager.getRocketManager().travel(player, rocket, getCommand(args));
                 }*/
             }else {
-                if(manager.getRocketManager().getSettings().isRequireFuel())
+                if(manager.getRocketManager().getSettings().isRequireFuel()) {
+                    manager.getRocketManager().getFuelManager().cancelFueling(player);
                     manager.getRocketManager().getFuelManager().startFueling(player, rocket);
-                else
+                } else
                     manager.getRocketManager().launchOff(player, rocket, null);
                 /*if (args[args.length - 1].equalsIgnoreCase("confirm")) {
                     return manager.getRocketManager().travel(rocket, player, true);
