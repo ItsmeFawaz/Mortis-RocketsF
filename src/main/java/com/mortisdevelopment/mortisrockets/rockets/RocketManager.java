@@ -53,18 +53,16 @@ public class RocketManager extends CoreManager {
         //If Towny is enabled
         if (!settings.getTownySettings().isUseTowny())
             return true;
-        if (townyAPI.isWilderness(location))
-            return isOutsideTownRadius(player, location, settings.getTownySettings().getLandDistanceFromUnauthorizedZones(), false, notify);
-        else {
-            TerritoryType territoryType = getRespectiveTerritory(player, location);
-            plugin.getManager().debug("Checking if " + player.getName() + " can land in " + territoryType.toString() + " at " + location.getX() + " " + location.getZ());
-            if(!territoryType.isLocationSafe(settings.getTownySettings(), false)) {
-                if(notify)
-                    player.sendMessage(getMessage("LAND_NOT_ALLOWED").replaceText(TextReplacementConfig.builder().match("%territory_type%").replacement(territoryType.toString()).build()));
-                return false;
-            } else
-                return true;
-        }
+        if(!isOutsideTownRadius(player, location, settings.getTownySettings().getLandDistanceFromUnauthorizedZones(), false, notify))
+            return false;
+        TerritoryType territoryType = getRespectiveTerritory(player, location);
+        plugin.getManager().debug("Checking if " + player.getName() + " can land in " + territoryType.toString() + " at " + location.getX() + " " + location.getZ());
+        if(!territoryType.isLocationSafe(settings.getTownySettings(), false)) {
+            if(notify)
+                player.sendMessage(getMessage("LAND_NOT_ALLOWED").replaceText(TextReplacementConfig.builder().match("%territory_type%").replacement(territoryType.toString()).build()));
+            return false;
+        } else
+            return true;
 
 
     }
@@ -77,17 +75,15 @@ public class RocketManager extends CoreManager {
         }
         if (!settings.getTownySettings().isUseTowny())
             return true;
-        if (townyAPI.isWilderness(location))
-            return isOutsideTownRadius(player, location, settings.getTownySettings().getLandDistanceFromUnauthorizedZones(), true, true);
-        else {
-            TerritoryType territoryType = getRespectiveTerritory(player, location);
-            plugin.getManager().debug("Checking if " + player.getName() + " can launch in " + territoryType.toString() + " at " + location.getX() + " " + location.getZ());
-            if(!territoryType.isLocationSafe(settings.getTownySettings(), true)) {
-                player.sendMessage(getMessage("LAUNCH_NOT_ALLOWED").replaceText(TextReplacementConfig.builder().match("%territory_type%").replacement(territoryType.toString()).build()));
-                return false;
-            } else
-                return true;
-        }
+        if(!isOutsideTownRadius(player, location, settings.getTownySettings().getLandDistanceFromUnauthorizedZones(), true, true))
+            return false;
+        TerritoryType territoryType = getRespectiveTerritory(player, location);
+        plugin.getManager().debug("Checking if " + player.getName() + " can launch in " + territoryType.toString() + " at " + location.getX() + " " + location.getZ());
+        if(!territoryType.isLocationSafe(settings.getTownySettings(), true)) {
+            player.sendMessage(getMessage("LAUNCH_NOT_ALLOWED").replaceText(TextReplacementConfig.builder().match("%territory_type%").replacement(territoryType.toString()).build()));
+            return false;
+        } else
+            return true;
 
         /*if (!rocket.isOutsideTownRadius(location, rocket.getLaunchingRadius() * 16)) {
             player.sendMessage(getMessage("LAUNCH_NEAR_TOWN"));

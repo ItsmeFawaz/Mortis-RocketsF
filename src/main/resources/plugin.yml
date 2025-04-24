@@ -2,6 +2,9 @@ name: MortisRockets
 version: '${project.version}'
 main: com.mortisdevelopment.mortisrockets.MortisRockets
 api-version: '1.18'
+authors:
+  - ShadedXero
+  - ItsmeFawaz
 softdepend:
   - EssentialsX
   - Towny
