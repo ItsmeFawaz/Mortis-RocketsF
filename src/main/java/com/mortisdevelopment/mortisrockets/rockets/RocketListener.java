@@ -13,6 +13,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -109,8 +110,10 @@ public class RocketListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         if(rocketManager.getLaunchTasks().containsKey(event.getPlayer().getUniqueId())) {
             rocketManager.getLaunchTasks().remove(event.getPlayer().getUniqueId()).cancel();
-            event.getPlayer().getVehicle().eject();
-            event.getPlayer().getVehicle().remove();
+            if(event.getPlayer().getVehicle() != null) {
+                event.getPlayer().getVehicle().eject();
+                event.getPlayer().getVehicle().remove();
+            }
             event.getPlayer().getLocation().getWorld().dropItem(event.getPlayer().getLocation(), rocketManager.getSettings().getInventoryItem());
         }
         RocketManager.TravelInfo travel = rocketManager.getTraveling().remove(event.getPlayer().getUniqueId());
@@ -316,6 +319,23 @@ public class RocketListener implements Listener {
     private void performLandingMechanics(Player player, RocketManager.TravelInfo travelInfo, float sideways, float forward) {
         RocketSettings settings = rocketManager.getSettings();
         ArmorStand stand = travelInfo.getStand();
+        if(settings.isMidairCollision())
+            Bukkit.getScheduler().runTask(rocketManager.getPlugin(), () -> {
+                stand.getLocation().getNearbyEntitiesByType(LivingEntity.class, settings.getLandingDamageRadius()).forEach(x -> {
+                    if(x == player || x == stand)
+                        return;
+                    x.damage(settings.getLandingDamage(), player);
+                    Vector standVector = stand.getLocation().toVector();
+                    Vector playerVector = x.getLocation().toVector();
+
+// Calculate the direction vector from the stand to the player
+                    Vector direction = playerVector.subtract(standVector).normalize();
+
+// Apply a velocity in the opposite direction
+                    Vector pushVelocity = direction.multiply(settings.getLandingPushbackStrength()); // Adjust the multiplier for push strength
+                    x.setVelocity(x.getVelocity().add(pushVelocity));
+                });
+            });
         if (stand.isDead() || stand.isOnGround() || stand.isInLava() || stand.isInPowderedSnow() || stand.isInWaterOrBubbleColumn() /*|| stand.getPassengers().isEmpty()*/) {
             //Change this to make the armorstand persistant
             travelInfo.startDismount();

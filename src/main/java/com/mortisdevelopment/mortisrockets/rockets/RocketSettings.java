@@ -30,12 +30,16 @@ public class RocketSettings {
     private final double landingMoveSpeed;
     private final boolean dropRocketOnLand;
     private final int landingDismountTime;
+    private final double landingPushbackStrength;
+    private final int landingDamage;
+    private final double landingDamageRadius;
+    private final boolean midairCollision;
     private final boolean protectWhileDismount;
     private final double landingParticleOffset;
     private final int inactivityTime;
     private final TownySettings townySettings;
 
-    public RocketSettings(String url, ItemStack launchItem, ItemStack landItem, ItemStack inventoryItem, int placeTime, int pickupTime, int fuelTime, int launchingTime, int launchLiftoffTime,  int launchingSpeed, boolean launchInvincibility, boolean requireFuel, boolean insertFuelIndividually, int landingDistance, int landingFreefallTime, double thrusterFallSpeed, boolean landingAllowMovement, double landingMoveSpeed, boolean dropRocketOnLand,int landingDismountTime, boolean protectWhileDismount, double landingParticleOffset, int inactivityTime, ConfigurationSection townySettingsSection) {
+    public RocketSettings(String url, ItemStack launchItem, ItemStack landItem, ItemStack inventoryItem, int placeTime, int pickupTime, int fuelTime, int launchingTime, int launchLiftoffTime,  int launchingSpeed, boolean launchInvincibility, boolean requireFuel, boolean insertFuelIndividually, int landingDistance, int landingFreefallTime, double thrusterFallSpeed, boolean landingAllowMovement, double landingMoveSpeed, boolean dropRocketOnLand,int landingDismountTime, double landingPushbackStrength, int landingDamage, double landingDamageRadius, boolean midairCollision, boolean protectWhileDismount, double landingParticleOffset, int inactivityTime, ConfigurationSection townySettingsSection) {
         this.url = url;
         this.launchItem = launchItem;
         this.landItem = landItem;
@@ -56,6 +60,10 @@ public class RocketSettings {
         this.landingMoveSpeed = landingMoveSpeed;
         this.dropRocketOnLand = dropRocketOnLand;
         this.landingDismountTime = landingDismountTime;
+        this.landingPushbackStrength = landingPushbackStrength;
+        this.landingDamage = landingDamage;
+        this.landingDamageRadius = landingDamageRadius;
+        this.midairCollision = midairCollision;
         this.protectWhileDismount = protectWhileDismount;
         this.landingParticleOffset = landingParticleOffset;
         this.inactivityTime = inactivityTime;

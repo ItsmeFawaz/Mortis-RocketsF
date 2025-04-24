@@ -84,6 +84,11 @@ settings:
     landing-dismount-time: 5
     #should the player be invulnerable to damage while still in the rocket and waiting to be dismounted?
     protect-while-dismounting: false
+    landing-pushback-strength: 1.5
+    landing-damage: 6
+    landing-damage-radius: 1.5
+    #Toggles whether the rocket will damage when collided mid air, possibly very memory intensive
+    midair-collision: false
   deployment:
     #how long it takes after right clicking with the item to deploy the rocket
     place-time: 5

@@ -15,6 +15,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.*;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.potion.PotionEffectType;
@@ -453,6 +454,29 @@ public class RocketManager extends CoreManager {
             travelStage = TravelStage.DISMOUNTING;
             player.sendMessage(rocket.getLandingMessage());
             runningTask.cancel();
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                stand.getLocation().getNearbyEntitiesByType(LivingEntity.class, settings.getLandingDamageRadius()).forEach(x -> {
+                    if(x == player || x == stand)
+                        return;
+                    x.damage(settings.getLandingDamage(), player);
+                    Vector standVector = stand.getLocation().toVector();
+                    Vector playerVector = x.getLocation().toVector();
+
+// Calculate the direction vector from the stand to the player
+                    Vector direction = playerVector.subtract(standVector).normalize();
+
+// Apply a velocity in the opposite direction
+                    Vector pushVelocity = direction.multiply(settings.getLandingPushbackStrength()); // Adjust the multiplier for push strength
+                    x.setVelocity(x.getVelocity().add(pushVelocity));
+                });
+                //TODO:- An optional feature
+                //stand.setVelocity((new Vector(0, 0.2F, 0)));
+                spawnLandingParticles(stand.getLocation());
+                player.getWorld().playSound(player.getLocation(), Sound.BLOCK_LAVA_EXTINGUISH, 2, 1);
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    player.getWorld().playSound(player.getLocation(), Sound.BLOCK_LAVA_EXTINGUISH, 2, 1);
+                }, 5L);
+            });
             runningTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 stand.eject();
                 player.setFallDistance(0);
@@ -468,6 +492,29 @@ public class RocketManager extends CoreManager {
             DROP,
             DISMOUNTING
         }
+    }
+    private void spawnLandingParticles(Location loc) {
+        BukkitRunnable runnable = new BukkitRunnable() {
+            int index = 0;
+            @Override
+            public void run() {
+                if(index == 4) {
+                    cancel();
+                }
+                Location particleLoc = new Location(loc.getWorld(), loc.getX(),loc.getY(),loc.getZ());
+                float radius = 1.5f;
+                for(float i = (float) Math.PI; i >= -Math.PI; i = i-0.1f) {
+                    double scaleX = (radius * Math.sin(i));
+                    double scaleZ = (radius * Math.cos(i));
+                    loc.getWorld().spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, new Location(loc.getWorld(), particleLoc.getX()+scaleX, particleLoc.getY(), particleLoc.getZ()+scaleZ), 0, 0,0, 0.5F, 0);
+                }
+                index++;
+            }
+        };
+        runnable.runTaskTimer(plugin, 0, 5);
+
+
+
     }
 
 }
