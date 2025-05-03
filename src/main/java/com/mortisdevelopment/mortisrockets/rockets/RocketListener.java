@@ -154,7 +154,7 @@ public class RocketListener implements Listener {
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
         RocketManager.TravelInfo travel = rocketManager.getTraveling().remove(event.getEntity().getUniqueId());
-        if(travel != null && travel.isDismounting()) {
+        if(travel != null) {
             travel.getRunningTask().cancel();
             travel.getStand().eject();
             travel.getStand().remove();
@@ -319,6 +319,18 @@ public class RocketListener implements Listener {
     private void performLandingMechanics(Player player, RocketManager.TravelInfo travelInfo, float sideways, float forward) {
         RocketSettings settings = rocketManager.getSettings();
         ArmorStand stand = travelInfo.getStand();
+        if(stand.getLocation().getY() <= settings.getVoidDetectionLayer()) {
+            MortisRockets.getInstance().getManager().debug("Dropping because of void detection");
+            Bukkit.getScheduler().runTask(rocketManager.getPlugin(), () -> {
+                if(settings.isDropRocketOnLand())
+                    player.getWorld().dropItem(stand.getLocation(), settings.getInventoryItem());
+                stand.eject();
+                stand.remove();
+            });
+            travelInfo.getRunningTask().cancel();
+            rocketManager.getTraveling().remove(player.getUniqueId());
+            return;
+        }
         if(settings.isMidairCollision())
             Bukkit.getScheduler().runTask(rocketManager.getPlugin(), () -> {
                 stand.getLocation().getNearbyEntitiesByType(LivingEntity.class, settings.getLandingDamageRadius()).forEach(x -> {

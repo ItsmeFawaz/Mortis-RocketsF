@@ -34,12 +34,13 @@ public class RocketSettings {
     private final int landingDamage;
     private final double landingDamageRadius;
     private final boolean midairCollision;
+    private final int voidDetectionLayer;
     private final boolean protectWhileDismount;
     private final double landingParticleOffset;
     private final int inactivityTime;
     private final TownySettings townySettings;
 
-    public RocketSettings(String url, ItemStack launchItem, ItemStack landItem, ItemStack inventoryItem, int placeTime, int pickupTime, int fuelTime, int launchingTime, int launchLiftoffTime,  int launchingSpeed, boolean launchInvincibility, boolean requireFuel, boolean insertFuelIndividually, int landingDistance, int landingFreefallTime, double thrusterFallSpeed, boolean landingAllowMovement, double landingMoveSpeed, boolean dropRocketOnLand,int landingDismountTime, double landingPushbackStrength, int landingDamage, double landingDamageRadius, boolean midairCollision, boolean protectWhileDismount, double landingParticleOffset, int inactivityTime, ConfigurationSection townySettingsSection) {
+    public RocketSettings(String url, ItemStack launchItem, ItemStack landItem, ItemStack inventoryItem, int placeTime, int pickupTime, int fuelTime, int launchingTime, int launchLiftoffTime,  int launchingSpeed, boolean launchInvincibility, boolean requireFuel, boolean insertFuelIndividually, int landingDistance, int landingFreefallTime, double thrusterFallSpeed, boolean landingAllowMovement, double landingMoveSpeed, boolean dropRocketOnLand,int landingDismountTime, double landingPushbackStrength, int landingDamage, double landingDamageRadius, boolean midairCollision, int voidDetectionLayer, boolean protectWhileDismount, double landingParticleOffset, int inactivityTime, ConfigurationSection townySettingsSection) {
         this.url = url;
         this.launchItem = launchItem;
         this.landItem = landItem;
@@ -64,6 +65,7 @@ public class RocketSettings {
         this.landingDamage = landingDamage;
         this.landingDamageRadius = landingDamageRadius;
         this.midairCollision = midairCollision;
+        this.voidDetectionLayer = voidDetectionLayer;
         this.protectWhileDismount = protectWhileDismount;
         this.landingParticleOffset = landingParticleOffset;
         this.inactivityTime = inactivityTime;

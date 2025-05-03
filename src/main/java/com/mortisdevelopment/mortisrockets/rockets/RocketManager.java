@@ -154,6 +154,7 @@ public class RocketManager extends CoreManager {
             stand.addPassenger(player);
         } else {
             stand = (ArmorStand) player.getVehicle();
+            stand.setInvulnerable(true);
             placedRockets.remove(stand);
         }
         TravelInfo travelInfo = new TravelInfo(rocket, player, stand, stand.getLocation() , location);
@@ -248,7 +249,6 @@ public class RocketManager extends CoreManager {
         }.runTaskTimer(plugin, 20L, 40L));
     }
     public void launchOff(Player player, Rocket rocket, RocketLocation rocketLocation) {
-
         BukkitTask launchTask = new BukkitRunnable() {
             @Override
             public void run() {
@@ -261,6 +261,7 @@ public class RocketManager extends CoreManager {
                 }
                 fuelManager.getFuelingPlayers().remove(player.getUniqueId());
                 cancel();
+                launchTasks.remove(player.getUniqueId());
             }
         }.runTaskLater(plugin,  settings.getLaunchLiftoffTime()*20L);
         launchTasks.put(player.getUniqueId(), launchTask);
@@ -458,15 +459,13 @@ public class RocketManager extends CoreManager {
                     Vector standVector = stand.getLocation().toVector();
                     Vector playerVector = x.getLocation().toVector();
 
-// Calculate the direction vector from the stand to the player
+                    // Calculate the direction vector from the stand to the player
                     Vector direction = playerVector.subtract(standVector).normalize();
 
-// Apply a velocity in the opposite direction
+                    // Apply a velocity in the opposite direction
                     Vector pushVelocity = direction.multiply(settings.getLandingPushbackStrength()); // Adjust the multiplier for push strength
                     x.setVelocity(x.getVelocity().add(pushVelocity));
                 });
-                //TODO:- An optional feature
-                //stand.setVelocity((new Vector(0, 0.2F, 0)));
                 spawnLandingParticles(stand.getLocation());
                 player.getWorld().playSound(player.getLocation(), Sound.BLOCK_LAVA_EXTINGUISH, 2, 1);
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
