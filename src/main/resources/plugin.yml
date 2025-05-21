@@ -15,3 +15,4 @@ commands:
     aliases: [rockets, mortisrocket, mortisrockets]
   giverocket:
     description: Give a player a rocket
+    permission: mortisrockets.giverocket

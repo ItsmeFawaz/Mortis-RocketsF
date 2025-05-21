@@ -20,6 +20,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.EquipmentSlot;
@@ -28,9 +29,7 @@ import org.bukkit.util.Vector;
 import org.spigotmc.event.entity.EntityDismountEvent;
 import org.spigotmc.event.entity.EntityMountEvent;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 
 public class RocketListener implements Listener {
 
@@ -152,21 +151,32 @@ public class RocketListener implements Listener {
         }
     }
     @EventHandler
-    public void onDeath(PlayerDeathEvent event) {
+    public void onDeath(EntityDeathEvent event) {
+        if(rocketManager.isRocket(event.getEntity())) {
+            Optional<Map.Entry<UUID, RocketManager.TravelInfo>> optionalRocket = rocketManager.getTraveling().entrySet().stream().filter(x -> x.getValue().getRocket().equals(event.getEntity())).findAny();
+            if(optionalRocket.isPresent()) {
+                optionalRocket.get().getValue().getRunningTask().cancel();
+                optionalRocket.get().getValue().getStand().eject();
+                optionalRocket.get().getValue().getStand().getLocation().createExplosion((float) rocketManager.getSettings().getExplosionStrength(), true);
+                optionalRocket.get().getValue().getStand().remove();
+            }
+        }
+        if(!(event instanceof PlayerDeathEvent playerDeathEvent))
+            return;
         RocketManager.TravelInfo travel = rocketManager.getTraveling().remove(event.getEntity().getUniqueId());
         if(travel != null) {
             travel.getRunningTask().cancel();
             travel.getStand().eject();
             travel.getStand().remove();
             if(rocketManager.getSettings().isDropRocketOnLand()) {
-                event.getPlayer().getWorld().dropItem(travel.getStand().getLocation(), rocketManager.getSettings().getInventoryItem());
+                playerDeathEvent.getPlayer().getWorld().dropItem(travel.getStand().getLocation(), rocketManager.getSettings().getInventoryItem());
             }
         }
-        if(rocketManager.getLaunchTasks().containsKey(event.getPlayer().getUniqueId())) {
-            rocketManager.getLaunchTasks().remove(event.getPlayer().getUniqueId()).cancel();
-            event.getPlayer().getVehicle().eject();
-            event.getPlayer().getVehicle().remove();
-            event.getPlayer().getLocation().getWorld().dropItem(event.getPlayer().getLocation(), rocketManager.getSettings().getInventoryItem());
+        if(rocketManager.getLaunchTasks().containsKey(playerDeathEvent.getPlayer().getUniqueId())) {
+            rocketManager.getLaunchTasks().remove(playerDeathEvent.getPlayer().getUniqueId()).cancel();
+            playerDeathEvent.getPlayer().getVehicle().eject();
+            playerDeathEvent.getPlayer().getVehicle().remove();
+            playerDeathEvent.getPlayer().getLocation().getWorld().dropItem(playerDeathEvent.getPlayer().getLocation(), rocketManager.getSettings().getInventoryItem());
         }
     }
     @EventHandler

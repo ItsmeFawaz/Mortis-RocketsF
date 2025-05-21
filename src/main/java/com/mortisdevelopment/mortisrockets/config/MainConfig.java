@@ -74,6 +74,8 @@ public class MainConfig extends Config {
                 section.getDouble("land.landing-damage-radius"),
                 section.getBoolean("land.midair-collision"),
                 section.getInt("land.void-detection-layer"),
+                section.getBoolean("land.invincibility"),
+                section.getDouble("land.explosion-strength"),
                 section.getBoolean("land.protect-while-dismounting"),
                 landingParticleOffset,
                 section.getInt("launch.inactivity-timer"),

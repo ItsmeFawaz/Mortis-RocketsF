@@ -90,6 +90,8 @@ settings:
     #Toggles whether the rocket will damage when collided mid air, possibly very memory intensive
     midair-collision: false
     void-detection-layer: -64
+    invincibility: true
+    explosion-strength: 4
   deployment:
     #how long it takes after right clicking with the item to deploy the rocket
     place-time: 5

@@ -184,6 +184,8 @@ public class RocketManager extends CoreManager {
         stand.remove();
         player.teleport(loc);
         ArmorStand landingStand = spawnRocket(loc, false);
+        if(settings.isLandInvincibility())
+            landingStand.setInvulnerable(true);
         landingStand.addPassenger(player);
         TravelInfo travelInfo = traveling.get(player.getUniqueId());
         //landingInfo.startSuicideBurn();
@@ -213,6 +215,8 @@ public class RocketManager extends CoreManager {
         stand.eject();
         stand.teleport(loc);
         stand.setItem(EquipmentSlot.HEAD, settings.getLandItem().clone());
+        if(!settings.isLandInvincibility())
+            stand.setInvulnerable(false);
         player.teleport(loc);
         stand.addPassenger(player);
         TravelInfo travelInfo = traveling.get(player.getUniqueId());
@@ -278,33 +282,6 @@ public class RocketManager extends CoreManager {
         stand.setInvisible(true);
         return stand;
     }
-    private void performGracefulLand(Player player, Rocket rocket, ArmorStand landingStand) {
-        landingStand.setGravity(true);
-        Bukkit.getScheduler().runTaskTimer(plugin, x -> {
-            if (player.isDead() || player.isOnGround() || player.isInLava() || player.isInPowderedSnow() || player.isInWaterOrBubbleColumn() || player.getPassengers().isEmpty()) {
-                player.sendMessage(rocket.getLandingMessage());
-                traveling.remove(player.getUniqueId());
-                player.eject();
-                player.setFallDistance(0);
-                player.removePotionEffect(PotionEffectType.SLOW_FALLING);
-                landingStand.remove();
-                if(settings.isDropRocketOnLand())
-                    player.getLocation().getWorld().dropItem(player.getLocation(), settings.getInventoryItem());
-                x.cancel();
-            }
-
-        }, 5, 5);
-    }
-    private void performLanding(Player player, Rocket rocket, ArmorStand landingStand) {
-        traveling.remove(player.getUniqueId());
-        player.sendMessage(rocket.getLandingMessage());
-        player.setGravity(true);
-        player.eject();
-        player.setFallDistance(0);
-        landingStand.remove();
-        if(settings.isDropRocketOnLand())
-            player.getLocation().getWorld().dropItem(player.getLocation(), settings.getInventoryItem());
-    }
     private TerritoryType getRespectiveTerritory(Player player, Location location) {
         Resident resident = townyAPI.getResident(player);
         Town landTown;
@@ -369,26 +346,6 @@ public class RocketManager extends CoreManager {
             return stand.getEquipment().getHelmet().isSimilar(settings.getLaunchItem()) || stand.getEquipment().getHelmet().isSimilar(settings.getLandItem());
         }
         return false;
-    }
-    private boolean isBlockBelow(Location location) {
-        boolean blockBelow = false;
-        for (int x = -1; x <= 1; x++) {
-            for (int y = -1; y <= 0; y++) {
-                for (int z = -1; z <= 1; z++) {
-                    if (location.add(x, y ,z).getBlock().getType() == Material.AIR) {continue;}
-                    blockBelow = true;
-                    break;
-                }
-                if (blockBelow) {break;}
-            }
-            if (blockBelow) {break;}
-        }
-        return blockBelow;
-    }
-    private void stopDropSpeed(Entity entity) {
-        Vector vector = entity.getVelocity();
-        vector.setY(0.5F);
-        entity.setVelocity(vector);
     }
     private enum TerritoryType {
         OWN_TOWN,
